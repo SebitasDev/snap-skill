@@ -27,7 +27,9 @@ const Navbar = () => {
             <Button variant="ghost" asChild>
               <Link to="/browse">Browse</Link>
             </Button>
-            <Button variant="ghost">Sign In</Button>
+            <Button variant="ghost" asChild>
+              <Link to="/profile">Profile</Link>
+            </Button>
             <Button asChild>
               <Link to="/browse">Get Started</Link>
             </Button>

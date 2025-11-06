@@ -9,7 +9,7 @@ const Navbar = () => {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <Link to="/" className="flex items-center space-x-2">
-            <span className="text-2xl font-bold text-primary">skillhub</span>
+            <span className="text-2xl font-bold text-primary">FIVE.PAID</span>
           </Link>
 
           <div className="hidden md:flex flex-1 max-w-md mx-8">
@@ -24,9 +24,6 @@ const Navbar = () => {
           </div>
 
           <div className="flex items-center space-x-4">
-            <Button variant="ghost" asChild>
-              <Link to="/browse">Browse</Link>
-            </Button>
             <Button variant="ghost" asChild>
               <Link to="/profile">Profile</Link>
             </Button>

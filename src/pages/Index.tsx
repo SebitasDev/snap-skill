@@ -37,23 +37,17 @@ const Index = () => {
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-3xl text-center">
             <h1 className="mb-6 text-5xl font-bold leading-tight md:text-6xl">
-              Start a new freelance partnership for just $5
+              Find the perfect freelance services for your business
             </h1>
             <p className="mb-8 text-xl opacity-90">
-              Yes! Our freelancers get all $5 and thereafter you deal direct with the confidence that our novel reputation system provides.{' '}
-              <Link 
-                to="/our-vision" 
-                className="text-primary-foreground/80 hover:text-primary-foreground underline font-semibold transition-colors"
-              >
-                Learn more
-              </Link>
+              Work with talented people at the most affordable price
             </p>
             <div className="mx-auto flex max-w-2xl gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   type="search"
-                  placeholder="Try 'New home page mockup.'"
+                  placeholder="Try 'building mobile app'"
                   className="h-14 pl-12 text-base bg-background text-foreground"
                 />
               </div>
@@ -121,7 +115,7 @@ const Index = () => {
               Ready to get started?
             </h2>
             <p className="mb-8 text-xl opacity-90">
-              Join modern commerce using USDC and USDT for better dealings and zero platform bloat
+              Join millions of people who use our platform to turn their ideas into reality
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <Button size="lg" variant="secondary" className="bg-background text-foreground hover:bg-background/90">
@@ -140,22 +134,18 @@ const Index = () => {
         <div className="container mx-auto px-4">
           <div className="grid gap-8 md:grid-cols-4">
             <div>
-              <h3 className="mb-4 text-lg font-bold">Freelancers</h3>
+              <h3 className="mb-4 text-lg font-bold">Categories</h3>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>Sign up</li>
-                <li>Case studies</li>
-                <li>How it works</li>
-                <li>Support</li>
+                <li>Graphics & Design</li>
+                <li>Digital Marketing</li>
+                <li>Writing & Translation</li>
+                <li>Video & Animation</li>
               </ul>
             </div>
             <div>
               <h3 className="mb-4 text-lg font-bold">About</h3>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>
-                  <Link to="/our-vision" className="hover:text-foreground transition-colors">
-                    Our vision
-                  </Link>
-                </li>
+                <li>Careers</li>
                 <li>Press & News</li>
                 <li>Partnerships</li>
                 <li>Privacy Policy</li>
@@ -181,7 +171,7 @@ const Index = () => {
             </div>
           </div>
           <div className="mt-8 border-t pt-8 text-center text-sm text-muted-foreground">
-            <p>© 2024 FIVE.PAID. All rights reserved.</p>
+            <p>© 2024 SkillHub. All rights reserved.</p>
           </div>
         </div>
       </footer>

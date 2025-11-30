@@ -7,7 +7,6 @@ import Index from "./pages/Index";
 import Browse from "./pages/Browse";
 import ServiceDetail from "./pages/ServiceDetail";
 import Profile from "./pages/Profile";
-import OurVision from "./pages/OurVision";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -17,18 +16,12 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter
-        future={{
-          v7_startTransition: true,
-          v7_relativeSplatPath: true,
-        }}
-      >
+      <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/browse" element={<Browse />} />
           <Route path="/service/:id" element={<ServiceDetail />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/our-vision" element={<OurVision />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

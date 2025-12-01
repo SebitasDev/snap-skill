@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+import {ConnectWalletButton} from "@/components/ConnectWalletButton.tsx";
 
 const Navbar = () => {
   return (
@@ -33,6 +34,9 @@ const Navbar = () => {
             <Button asChild>
               <Link to="/browse">Get Started</Link>
             </Button>
+              <Button asChild>
+               <ConnectWalletButton />
+              </Button>
           </div>
         </div>
       </div>

@@ -30,10 +30,8 @@ export async function sendUsdcPayment(
 
     const value = parseUnits(amount, 6);
 
-    // 🔥 Asegurar que VIEM usa la cuenta del wallet conectado
     const account = walletClient.account;
 
-    // 1️⃣ Estimar Gas
     const gas = await publicClient.estimateContractGas({
         account,
         chain: baseSepolia,

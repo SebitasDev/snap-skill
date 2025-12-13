@@ -1,42 +1,48 @@
 import { privateKeyToAccount } from "viem/accounts";
-import {createWalletClient, createPublicClient, http, Address} from "viem";
+import { createWalletClient, createPublicClient, http, Address } from "viem";
 import { baseSepolia } from "viem/chains";
 import { parseEther } from "viem";
 
-export async function sendSupplierPayment(
-    to:`0x${string}`
-) {
-    const account = privateKeyToAccount(process.env.VITE_PAYMASTER_PRIVATE_KEY as Address);
+export async function sendSupplierPayment(to: `0x${string}`) {
+  const privateKey = process.env.VITE_PAYMASTER_PRIVATE_KEY;
+  if (!privateKey) {
+    console.error("Variable de entorno no encontrada:", process.env);
+    throw new Error(
+      "No se encontró la clave privada en las variables de entorno"
+    );
+  }
 
-    const RPC = "https://sepolia.base.org";
+  const account = privateKeyToAccount(privateKey as `0x${string}`);
 
-    const walletClient = createWalletClient({
-        account,
-        chain: baseSepolia,
-        transport: http(RPC),
-    });
+  const RPC = "https://sepolia.base.org";
 
-    const publicClient = createPublicClient({
-        chain: baseSepolia,
-        transport: http(RPC),
-    });
+  const walletClient = createWalletClient({
+    account,
+    chain: baseSepolia,
+    transport: http(RPC),
+  });
 
-    const value = parseEther("0.0000001");
+  const publicClient = createPublicClient({
+    chain: baseSepolia,
+    transport: http(RPC),
+  });
 
-    const txHash = await walletClient.sendTransaction({
-        account,
-        chain: baseSepolia,
-        to,
-        value,
-        kzg: undefined,
-    });
+  const value = parseEther("0.0000001");
 
-    console.log("TX enviada:", txHash);
+  const txHash = await walletClient.sendTransaction({
+    account,
+    chain: baseSepolia,
+    to,
+    value,
+    kzg: undefined,
+  });
 
-    const receipt = await publicClient.waitForTransactionReceipt({
-        hash: txHash,
-    });
+  console.log("TX enviada:", txHash);
 
-    console.log("Receipt:", receipt);
-    return receipt;
+  const receipt = await publicClient.waitForTransactionReceipt({
+    hash: txHash,
+  });
+
+  console.log("Receipt:", receipt);
+  return receipt;
 }

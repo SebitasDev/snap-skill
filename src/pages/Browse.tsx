@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import ServiceCard from "@/components/ServiceCard";
 import { Button } from "@/components/ui/button";
@@ -11,10 +11,30 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Search, SlidersHorizontal } from "lucide-react";
-import { services } from "@/data/mockData";
+import { IServiceCard } from "@/types/service";
 
 const Browse = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [services, setServices] = useState<IServiceCard[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const res = await fetch("http://localhost:3000/api/services");
+        const data = await res.json();
+        setServices(data.services);
+      } catch (err) {
+        console.error("Error fetching services:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, []);
+
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div className="min-h-screen bg-background">
@@ -86,9 +106,21 @@ const Browse = () => {
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {services.map((service) => (
-            <ServiceCard key={service.id} {...service} />
-          ))}
+          {services.map((service: IServiceCard, i) => {
+            const serviceProps = {
+              id: service._id,
+              title: service.title,
+              price: service.price,
+              category: service.category,
+              image: service.imageUrl,
+              seller: "John Doe",
+              sellerLevel: "Top Rated",
+              rating: 4.8,
+              reviews: 125,
+            };
+
+            return <ServiceCard key={i} {...serviceProps} />;
+          })}
         </div>
 
         {/* Pagination */}

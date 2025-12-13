@@ -2,9 +2,12 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-import {ConnectWalletButton} from "@/components/ConnectWalletButton.tsx";
+import { ConnectWalletButton } from "@/components/ConnectWalletButton.tsx";
+import { useWalletAccount } from "@/hooks/useWalletAccount";
 
 const Navbar = () => {
+  const { isConnected } = useWalletAccount();
+
   return (
     <nav className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4">
@@ -31,12 +34,17 @@ const Navbar = () => {
             <Button variant="ghost" asChild>
               <Link to="/profile">Profile</Link>
             </Button>
+            {isConnected && (
+              <Button variant="outline">
+                <Link to="/createservice">Offer Service</Link>
+              </Button>
+            )}
             <Button asChild>
               <Link to="/browse">Get Started</Link>
             </Button>
-              <Button asChild>
-               <ConnectWalletButton />
-              </Button>
+            <Button asChild>
+              <ConnectWalletButton />
+            </Button>
           </div>
         </div>
       </div>

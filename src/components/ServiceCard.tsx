@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 interface ServiceCardProps {
-  id: number;
+  id: string;
   title: string;
   seller: string;
   sellerLevel: string;
@@ -47,7 +47,7 @@ const ServiceCard = ({
             <Heart className="h-4 w-4" />
           </Button>
         </div>
-        
+
         <div className="p-4">
           <div className="mb-2 flex items-center space-x-2">
             <div className="h-8 w-8 rounded-full bg-muted" />
@@ -56,17 +56,17 @@ const ServiceCard = ({
               <p className="text-muted-foreground">{sellerLevel}</p>
             </div>
           </div>
-          
+
           <h3 className="mb-2 line-clamp-2 font-medium text-card-foreground group-hover:text-primary transition-colors">
             {title}
           </h3>
-          
+
           <div className="mb-3">
             <Badge variant="secondary" className="text-xs">
               {category}
             </Badge>
           </div>
-          
+
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-1 text-sm">
               <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />

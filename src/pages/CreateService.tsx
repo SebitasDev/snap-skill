@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import Navbar from "@/components/Navbar";
@@ -11,13 +11,14 @@ import StepIndicator from "@/components/features/StepIndicator";
 
 import { useWalletAccount } from "@/hooks/useWalletAccount";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "@/components/ui/use-toast";
 
 const CreateService = () => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     title: "",
     category: "",
-    price: 0.01,
+    price: import.meta.env.MODE === "development" ? 0.01 : 10,
     deliveryTime: "3 days",
     revisions: "Unlimited",
     description: "",
@@ -26,9 +27,45 @@ const CreateService = () => {
     imageFile: null,
   });
   const [newIncludeItem, setNewIncludeItem] = useState("");
-  const API_URL = `${import.meta.env.VITE_API_BASE_URL}/api/services`;
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000"; // Define here or use context
+  const API_URL = `${API_BASE_URL}/api/services`;
   const { user: walletAddress } = useWalletAccount();
   const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  // Check if user has profile
+  useEffect(() => {
+    const checkProfile = async () => {
+      if (!walletAddress) return; // Wait for wallet
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/profile/${walletAddress}`);
+        if (res.status === 404) {
+          toast({
+            title: "Profile Required",
+            description: "You need to create a profile before offering a service.",
+            variant: "destructive"
+          });
+          navigate("/profile");
+        }
+      } catch (error) {
+        console.error("Error checking profile", error);
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+
+    if (walletAddress) {
+      checkProfile();
+    } else {
+      // If not connected, maybe just let them see the page but button disabled? 
+      // Or wait. For now, let's assume if connected we check.
+      setProfileLoading(false);
+    }
+
+  }, [walletAddress, navigate, toast, API_BASE_URL]);
 
   /* Manejador cambios inputs */
   const handleChange = (e) => {
@@ -116,11 +153,14 @@ const CreateService = () => {
 
     if (!walletAddress) {
       alert(
-        "Error: La wallet no está conectada. Por favor, conéctala para publicar."
+        "Error: Wallet not connected. Please connect to publish."
       );
       return;
     }
 
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
     const dataToSend = new FormData();
 
     dataToSend.append("walletAddress", walletAddress);
@@ -139,7 +179,7 @@ const CreateService = () => {
     console.log(dataToSend);
 
     try {
-      console.log("Enviando FormData al backend...");
+      console.log("Sending FormData to backend...");
 
       const response = await fetch(API_URL, {
         method: "POST",
@@ -150,18 +190,20 @@ const CreateService = () => {
 
       if (response.ok) {
         alert(
-          `Servicio publicado con éxito! URL de la imagen: ${result.service.imageUrl}`
+          `Service published successfully! Image URL: ${result.service.imageUrl}`
         );
         navigate("/");
       } else {
-        alert(`Error al publicar: ${result.message || "Error desconocido"}`);
+        alert(`Error publishing: ${result.message || "Unknown error"}`);
         console.error("Error del servidor:", result);
       }
     } catch (error) {
       alert(
-        "Error de conexión con el servidor. Asegúrate que tu backend esté corriendo."
+        "Connection error with server. Ensure your backend is running."
       );
       console.error("Error de red:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -170,7 +212,7 @@ const CreateService = () => {
       <Navbar />
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <h1 className="text-4xl font-extrabold mb-8 text-center text-gray-900">
-          Ofrecer un Nuevo Servicio Freelance
+          Offer a New Freelance Service
         </h1>
 
         {/* Indicador de Pasos (Componente Separado) */}
@@ -190,7 +232,7 @@ const CreateService = () => {
                 onClick={() => setStep(step - 1)}
                 type="button"
               >
-                <ArrowLeft className="mr-2 h-4 w-4" /> Anterior
+                <ArrowLeft className="mr-2 h-4 w-4" /> Previous
               </Button>
             ) : (
               <span />
@@ -202,16 +244,16 @@ const CreateService = () => {
                 disabled={!canAdvance()}
                 type="button"
               >
-                Siguiente <ArrowRight className="ml-2 h-4 w-4" />
+                Next <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             ) : (
               <Button
                 type="submit"
                 size="lg"
                 className="bg-green-600 hover:bg-green-700"
-                disabled={!canAdvance()} // Se puede deshabilitar si no pasa la validación del paso 3 (aunque step 3 no tiene campos obligatorios)
+                disabled={!canAdvance() || isSubmitting}
               >
-                ¡Publicar Servicio Ahora!
+                {isSubmitting ? "Publishing..." : "Publish Service Now!"}
               </Button>
             )}
           </div>

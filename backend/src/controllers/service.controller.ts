@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import { Service } from "../models/service.model";
+import { Purchase } from "../models/purchase.model";
+import mongoose from "mongoose";
 import cloudinary from "../config/cloudinary";
 import { isEvmAddress } from "../utils/address";
 
@@ -121,25 +123,130 @@ export const createService = async (
 
 export const getServices = async (req: Request, res: Response) => {
   try {
-    const services = await Service.find().sort({ createdAt: -1 });
-    return res.status(200).json({ services });
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const search = (req.query.search as string) || "";
+    const category = (req.query.category as string) || "All";
+
+    const query: any = {};
+
+    if (search) {
+      query.title = { $regex: search, $options: "i" };
+    }
+
+    if (category !== "All") {
+      query.category = category;
+    }
+
+    const skip = (page - 1) * limit;
+
+    // Use aggregate to lookup profile
+    const services = await Service.aggregate([
+      { $match: query },
+      { $sort: { createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: "profiles",
+          localField: "walletAddress",
+          foreignField: "walletAddress",
+          as: "profile",
+        },
+      },
+      {
+        $unwind: {
+          path: "$profile",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $addFields: {
+          // If no profile, we can key returning null or partial info.
+          // Frontend will handle it.
+        }
+      }
+    ]);
+
+    const total = await Service.countDocuments(query);
+
+    return res.status(200).json({
+      services,
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+    });
   } catch (error) {
     console.error("ERROR GET SERVICES:", error);
     return res.status(500).json({ message: "Server error", error });
   }
 };
 
+
+
 export const getServiceById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const { buyer } = req.query; // Check if a buyer is viewing this
 
-    const service = await Service.findById(id);
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid Service ID" });
+    }
 
-    if (!service) {
+    const services = await Service.aggregate([
+      {
+        $match: {
+          _id: new mongoose.Types.ObjectId(id)
+        }
+      },
+      {
+        $lookup: {
+          from: "profiles",
+          localField: "walletAddress",
+          foreignField: "walletAddress",
+          as: "profile",
+        },
+      },
+      {
+        $unwind: {
+          path: "$profile",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+    ]);
+
+    if (!services || services.length === 0) {
       return res.status(404).json({ message: "Service not found" });
     }
 
-    return res.status(200).json({ service });
+    const service = services[0];
+    let contactInfo = null;
+
+    // Check if purchased
+    if (buyer) {
+      const purchase = await Purchase.findOne({
+        serviceId: id,
+        buyerWallet: buyer,
+      });
+
+      if (purchase) {
+        // Unlock contact info
+        if (service.profile) {
+          contactInfo = {
+            whatsapp: service.profile.whatsapp,
+            telegram: service.profile.telegram,
+          };
+        }
+      }
+    }
+
+    // Always strip these from the main profile object to be safe, only return explicitly via contactInfo
+    if (service.profile) {
+      delete service.profile.whatsapp;
+      delete service.profile.telegram;
+    }
+
+    return res.status(200).json({ service, contactInfo });
   } catch (error) {
     console.error("ERROR GET SERVICE BY ID:", error);
     return res.status(500).json({ message: "Server error", error });

@@ -20,8 +20,14 @@ const ServiceSchema = new Schema(
     },
     imageUrl: { type: String, required: true },
     imagePublicId: { type: String, required: true },
+    averageRating: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
+
+// Indexes for performance
+ServiceSchema.index({ category: 1, createdAt: -1 }); // Browse by category + sort
+ServiceSchema.index({ walletAddress: 1 }); // "My Services"
+ServiceSchema.index({ title: "text", description: "text" }); // Future-proofing for text search
 
 export const Service = model("Service", ServiceSchema);

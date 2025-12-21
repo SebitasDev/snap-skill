@@ -1,5 +1,5 @@
 import { createWalletClient, custom } from "viem";
-import { baseSepolia } from "viem/chains";
+import { base } from "viem/chains";
 import type { EIP1193Provider } from "viem";
 
 type X402FetchOptions = {
@@ -31,7 +31,7 @@ export async function x402Fetch(url: string, options: X402FetchOptions) {
   const provider = window.ethereum as EIP1193Provider;
 
   const walletClient = createWalletClient({
-    chain: baseSepolia,
+    chain: base,
     transport: custom(provider),
   });
 

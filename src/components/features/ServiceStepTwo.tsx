@@ -22,14 +22,14 @@ const StepTwo = ({
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">2. Detalle y Presentación</h2>
+      <h2 className="text-2xl font-bold">2. Details & Presentation</h2>
 
       <div>
         <label
           htmlFor="description"
           className="mb-2 block text-sm font-medium text-gray-700"
         >
-          Descripción Detallada del Servicio
+          Detailed Service Description
         </label>
         <Textarea
           id="description"
@@ -37,10 +37,10 @@ const StepTwo = ({
           value={formData.description}
           onChange={handleChange}
           rows={8}
-          placeholder="Describe exactamente lo que ofreces, tu proceso de trabajo y por qué deben elegirte."
+          placeholder="Describe exactly what you offer, your work process, and why they should choose you."
         />
         <p className="text-xs text-muted-foreground mt-1">
-          Mínimo 120 palabras para ser indexado correctamente.
+          Minimum 120 words to be indexed correctly.
         </p>
       </div>
 
@@ -49,7 +49,7 @@ const StepTwo = ({
           htmlFor="imageFile"
           className="mb-2 block text-sm font-medium text-gray-700"
         >
-          Imagen de Portada (Gallery)
+          Cover Image (Gallery)
         </label>
         <Input
           id="imageFile"
@@ -61,18 +61,18 @@ const StepTwo = ({
         />
         {formData.imageFile && (
           <p className="text-sm text-green-600 mt-2">
-            Imagen seleccionada: {formData.imageFile.name}
+            Selected image: {formData.imageFile.name}
           </p>
         )}
       </div>
 
       <div>
         <label className="mb-2 block text-sm font-medium text-gray-700">
-          Qué Incluye (Entregables)
+          What's Included (Deliverables)
         </label>
         <div className="flex gap-2 mb-2">
           <Input
-            placeholder="Ej: Archivos Fuente, Diseño en 3D, Mockups"
+            placeholder="Ex: Source Files, 3D Design, Mockups"
             value={newIncludeItem}
             onChange={(e) => setNewIncludeItem(e.target.value)}
             onKeyDown={(e) => {
@@ -83,7 +83,7 @@ const StepTwo = ({
             }}
           />
           <Button type="button" onClick={handleAddIncludeItem}>
-            Añadir
+            Add
           </Button>
         </div>
         <div className="flex flex-wrap gap-2 mt-3">

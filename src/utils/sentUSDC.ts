@@ -1,5 +1,5 @@
 import { parseUnits, PublicClient, WalletClient } from "viem";
-import { baseSepolia } from "viem/chains";
+import { base } from "viem/chains";
 
 const erc20Abi = [
   {
@@ -14,7 +14,7 @@ const erc20Abi = [
   },
 ];
 
-const USDC_BASE_SEPOLIA = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 
 export async function sendUsdcPayment(
   user: unknown,
@@ -34,8 +34,8 @@ export async function sendUsdcPayment(
 
   const gas = await publicClient.estimateContractGas({
     account,
-    chain: baseSepolia,
-    address: USDC_BASE_SEPOLIA,
+    chain: base,
+    address: USDC_BASE,
     abi: erc20Abi,
     functionName: "transfer",
     args: [to, value],
@@ -46,8 +46,8 @@ export async function sendUsdcPayment(
   // 2️⃣ Enviar transacción
   const txHash = await walletClient.writeContract({
     account,
-    chain: baseSepolia,
-    address: USDC_BASE_SEPOLIA,
+    chain: base,
+    address: USDC_BASE,
     abi: erc20Abi,
     functionName: "transfer",
     args: [to, value],

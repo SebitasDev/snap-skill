@@ -4,78 +4,84 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 interface ServiceCardProps {
-  id: string;
+  _id: string;
   title: string;
-  seller: string;
-  sellerLevel: string;
+  price: number;
   rating: number;
   reviews: number;
-  price: number;
-  image: string;
+  imageUrl: string;
   category: string;
+  sellerLevel: string;
+  walletAddress: string;
+  profile?: {
+    name: string;
+    imageUrl: string;
+  };
 }
 
 const ServiceCard = ({
-  id,
+  _id,
   title,
-  seller,
-  sellerLevel,
+  price,
   rating,
   reviews,
-  price,
-  image,
+  imageUrl,
   category,
+  sellerLevel,
+  walletAddress,
+  profile,
 }: ServiceCardProps) => {
   return (
-    <Link to={`/service/${id}`} className="group">
+    <Link to={`/service/${_id}`} className="group">
       <div className="overflow-hidden rounded-lg border bg-card transition-all hover:shadow-lg">
         <div className="relative aspect-video overflow-hidden">
           <img
-            src={image}
+            src={imageUrl}
             alt={title}
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
           <Button
             size="icon"
-            variant="ghost"
-            className="absolute right-2 top-2 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
+            variant="secondary"
+            className="absolute right-2 top-2 h-8 w-8 rounded-full opacity-0 transition-opacity group-hover:opacity-100"
           >
             <Heart className="h-4 w-4" />
           </Button>
+          <Badge className="absolute left-2 top-2 bg-background/80 text-foreground backdrop-blur-sm">
+            {category}
+          </Badge>
         </div>
 
         <div className="p-4">
           <div className="mb-2 flex items-center space-x-2">
-            <div className="h-8 w-8 rounded-full bg-muted" />
-            <div className="flex-1 text-sm">
-              <p className="font-medium">{seller}</p>
-              <p className="text-muted-foreground">{sellerLevel}</p>
+            <div className="h-8 w-8 overflow-hidden rounded-full bg-muted">
+              {profile?.imageUrl ? (
+                <img src={profile.imageUrl} alt={profile.name} className="h-full w-full object-cover" />
+              ) : (
+                <div className="h-full w-full bg-gray-300" />
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-medium">
+                {profile?.name || (walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "Unknown")}
+              </p>
+              <p className="text-xs text-muted-foreground">{sellerLevel}</p>
             </div>
           </div>
 
-          <h3 className="mb-2 line-clamp-2 font-medium text-card-foreground group-hover:text-primary transition-colors">
+          <h3 className="mb-2 line-clamp-2 text-base font-semibold transition-colors group-hover:text-primary">
             {title}
           </h3>
 
-          <div className="mb-3">
-            <Badge variant="secondary" className="text-xs">
-              {category}
-            </Badge>
-          </div>
-
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-1 text-sm">
-              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-              <span className="font-semibold">{rating}</span>
+            <div className="flex items-center space-x-1">
+              <Star className="h-4 w-4 fill-primary text-primary" />
+              <span className="font-medium">{rating}</span>
               <span className="text-muted-foreground">({reviews})</span>
             </div>
             <div className="text-right">
-              <p className="text-sm text-muted-foreground">Starting at</p>
-              <p className="text-lg font-bold text-card-foreground">${price}</p>
+              <p className="text-xs text-muted-foreground">Starting at</p>
+              <p className="text-lg font-bold text-primary">${(Number(price) + 0.02).toFixed(2)}</p>
             </div>
           </div>
         </div>

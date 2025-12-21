@@ -15,15 +15,44 @@ import { IServiceCard } from "@/types/service";
 
 const Browse = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [category, setCategory] = useState("All");
   const [services, setServices] = useState<IServiceCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalServices, setTotalServices] = useState(0);
+
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
+
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setPage(1); // Reset to page 1 on new search
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   useEffect(() => {
     const fetchServices = async () => {
+      setLoading(true);
       try {
-        const res = await fetch("http://localhost:3000/api/services");
+        const queryParams = new URLSearchParams({
+          page: page.toString(),
+          limit: "12",
+          search: debouncedSearch,
+          category: category,
+        });
+
+        const res = await fetch(`${API_BASE_URL}/api/services?${queryParams}`);
         const data = await res.json();
-        setServices(data.services);
+
+        if (data.services) {
+          setServices(data.services);
+          setTotalPages(data.pages);
+          setTotalServices(data.total);
+        }
       } catch (err) {
         console.error("Error fetching services:", err);
       } finally {
@@ -32,9 +61,19 @@ const Browse = () => {
     };
 
     fetchServices();
-  }, []);
+  }, [debouncedSearch, category, page, API_BASE_URL]);
 
-  if (loading) return <div>Loading...</div>;
+  const handleCategoryChange = (newCategory: string) => {
+    setCategory(newCategory);
+    setPage(1);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setPage(newPage);
+      window.scrollTo(0, 0);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -89,52 +128,83 @@ const Browse = () => {
             "Video Editing",
             "Social Media",
             "Voice Over",
-          ].map((category) => (
+          ].map((cat) => (
             <Button
-              key={category}
-              variant={category === "All" ? "default" : "outline"}
+              key={cat}
+              variant={category === cat ? "default" : "outline"}
               size="sm"
+              onClick={() => handleCategoryChange(cat)}
             >
-              {category}
+              {cat}
             </Button>
           ))}
         </div>
 
         {/* Results */}
         <div className="mb-4 text-sm text-muted-foreground">
-          Showing {services.length} results
+          Showing {services.length} of {totalServices} results
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {services.map((service: IServiceCard, i) => {
-            const serviceProps = {
-              id: service._id,
-              title: service.title,
-              price: service.price,
-              category: service.category,
-              image: service.imageUrl,
-              seller: "John Doe",
-              sellerLevel: "Top Rated",
-              rating: 4.8,
-              reviews: 125,
-            };
-
-            return <ServiceCard key={i} {...serviceProps} />;
-          })}
-        </div>
-
-        {/* Pagination */}
-        <div className="mt-12 flex justify-center">
-          <div className="flex items-center gap-2">
-            <Button variant="outline" disabled>
-              Previous
-            </Button>
-            <Button variant="default">1</Button>
-            <Button variant="outline">2</Button>
-            <Button variant="outline">3</Button>
-            <Button variant="outline">Next</Button>
+        {loading ? (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {[1, 2, 3, 4].map((n) => (
+              <div key={n} className="h-96 w-full animate-pulse rounded-xl bg-muted" />
+            ))}
           </div>
-        </div>
+        ) : (
+          <>
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {services.map((service: IServiceCard) => (
+                <ServiceCard
+                  key={service._id}
+                  _id={service._id}
+                  title={service.title}
+                  price={service.price}
+                  category={service.category}
+                  imageUrl={service.imageUrl}
+                  walletAddress={service.walletAddress}
+                  profile={service.profile}
+                  sellerLevel="Seller"
+                  rating={service.averageRating || 0}
+                  reviews={service.totalReviews || 0}
+                />
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-12 flex justify-center">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={page === 1}
+                    onClick={() => handlePageChange(page - 1)}
+                  >
+                    Previous
+                  </Button>
+
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                    <Button
+                      key={p}
+                      variant={p === page ? "default" : "outline"}
+                      onClick={() => handlePageChange(p)}
+                    >
+                      {p}
+                    </Button>
+                  ))}
+
+                  <Button
+                    variant="outline"
+                    disabled={page === totalPages}
+                    onClick={() => handlePageChange(page + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

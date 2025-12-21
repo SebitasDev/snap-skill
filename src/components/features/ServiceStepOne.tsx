@@ -12,31 +12,31 @@ import { categories } from "@/data/mockData";
 const StepOne = ({ formData, handleChange, handleSelectChange }) => {
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">1. Información Clave</h2>
+      <h2 className="text-2xl font-bold">1. Key Information</h2>
 
       <div>
         <label
           htmlFor="title"
           className="mb-2 block text-sm font-medium text-gray-700"
         >
-          Título del Servicio
+          Service Title
         </label>
         <Input
           id="title"
           name="title"
           value={formData.title}
           onChange={handleChange}
-          placeholder="Ej: Crearé un logotipo profesional minimalista para tu marca"
+          placeholder="Ex: I will create a professional minimalist logo for your brand"
           maxLength={80}
         />
         <p className="text-xs text-muted-foreground mt-1">
-          Máximo 80 caracteres. Sé claro y atractivo.
+          Max 80 characters. Be clear and attractive.
         </p>
       </div>
 
       <div>
         <label className="mb-2 block text-sm font-medium text-gray-700">
-          Categoría
+          Category
         </label>
         <Select
           value={formData.category}
@@ -44,7 +44,7 @@ const StepOne = ({ formData, handleChange, handleSelectChange }) => {
           name="category"
         >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="Selecciona la categoría principal" />
+            <SelectValue placeholder="Select the main category" />
           </SelectTrigger>
           <SelectContent>
             {categories.map(({ name }) => (
@@ -62,7 +62,7 @@ const StepOne = ({ formData, handleChange, handleSelectChange }) => {
             htmlFor="price"
             className="mb-2 block text-sm font-medium text-gray-700"
           >
-            Precio Base ($)
+            Base Price ($)
           </label>
           <div className="relative">
             <DollarSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -82,17 +82,20 @@ const StepOne = ({ formData, handleChange, handleSelectChange }) => {
             htmlFor="deliveryTime"
             className="mb-2 block text-sm font-medium text-gray-700"
           >
-            Tiempo de Entrega
+            Delivery Time
           </label>
-          <Select value={formData.deliveryTime} name="deliveryTime" disabled>
-            <SelectTrigger className="w-full bg-gray-100 cursor-not-allowed">
+          <Select
+            value={formData.deliveryTime}
+            onValueChange={(value) => handleSelectChange("deliveryTime", value)}
+          >
+            <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="1 day">1 día</SelectItem>
-              <SelectItem value="3 days">3 días</SelectItem>
-              <SelectItem value="5 days">5 días</SelectItem>
-              <SelectItem value="7 days">7 días</SelectItem>
+              <SelectItem value="1 day">1 day</SelectItem>
+              <SelectItem value="3 days">3 days</SelectItem>
+              <SelectItem value="5 days">5 days</SelectItem>
+              <SelectItem value="7 days">7 days</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -101,17 +104,20 @@ const StepOne = ({ formData, handleChange, handleSelectChange }) => {
             htmlFor="revisions"
             className="mb-2 block text-sm font-medium text-gray-700"
           >
-            Revisiones
+            Revisions
           </label>
-          <Select value={formData.revisions} name="revisions" disabled>
-            <SelectTrigger className="w-full bg-gray-100 cursor-not-allowed">
+          <Select
+            value={formData.revisions}
+            onValueChange={(value) => handleSelectChange("revisions", value)}
+          >
+            <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="1">1</SelectItem>
               <SelectItem value="3">3</SelectItem>
               <SelectItem value="5">5</SelectItem>
-              <SelectItem value="Unlimited">Ilimitadas</SelectItem>
+              <SelectItem value="Unlimited">Unlimited</SelectItem>
             </SelectContent>
           </Select>
         </div>

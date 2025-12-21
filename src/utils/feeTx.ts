@@ -1,6 +1,6 @@
 import { privateKeyToAccount } from "viem/accounts";
 import { createWalletClient, createPublicClient, http, Address } from "viem";
-import { baseSepolia } from "viem/chains";
+import { base } from "viem/chains";
 import { parseEther } from "viem";
 
 export async function sendSupplierPayment(to: `0x${string}`) {
@@ -14,16 +14,16 @@ export async function sendSupplierPayment(to: `0x${string}`) {
 
   const account = privateKeyToAccount(privateKey as `0x${string}`);
 
-  const RPC = "https://sepolia.base.org";
+  const RPC = "https://mainnet.base.org";
 
   const walletClient = createWalletClient({
     account,
-    chain: baseSepolia,
+    chain: base,
     transport: http(RPC),
   });
 
   const publicClient = createPublicClient({
-    chain: baseSepolia,
+    chain: base,
     transport: http(RPC),
   });
 
@@ -31,7 +31,7 @@ export async function sendSupplierPayment(to: `0x${string}`) {
 
   const txHash = await walletClient.sendTransaction({
     account,
-    chain: baseSepolia,
+    chain: base,
     to,
     value,
     kzg: undefined,

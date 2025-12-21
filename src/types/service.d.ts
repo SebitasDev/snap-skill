@@ -24,6 +24,12 @@ export interface IServiceCard {
   createdAt: string;
   updatedAt: string;
   __v: number;
+  averageRating?: number;
+  totalReviews?: number;
+  profile?: {
+    name: string;
+    imageUrl: string;
+  };
 }
 
 interface Category {

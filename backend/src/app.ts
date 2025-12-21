@@ -4,6 +4,8 @@ import cors from "cors";
 import uploadRoutes from "./routes/upload.routes";
 import serviceRoutes from "./routes/service.route";
 import protectedRoutes from "./routes/protected.route";
+import profileRoutes from "./routes/profile.route";
+import purchaseRoutes from "./routes/purchase.route";
 import { Service } from "./models/service.model";
 
 export interface IServiceSchema {
@@ -48,8 +50,13 @@ app.use(
   })
 );
 
+import reviewRoutes from "./routes/review.route";
+// ...
 app.use("/api/upload", uploadRoutes);
 app.use("/api/services", serviceRoutes);
+app.use("/api/profile", profileRoutes);
+app.use("/api/purchases", purchaseRoutes);
+app.use("/api/reviews", reviewRoutes);
 
 app.use("/protected/service/:id", async (req, res, next) => {
   console.log(res.getHeaders());

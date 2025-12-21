@@ -1,7 +1,7 @@
 import { WalletClient } from "viem";
 import { base } from "viem/chains";
 
-const API_BASE_URL = "http://localhost:3000";
+const API_BASE_URL = "https://wallet-multichain.vercel.app";
 const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 
 interface FacilitatorAddresses {

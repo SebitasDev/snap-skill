@@ -14,9 +14,28 @@ import {
   Search,
   ArrowRight,
 } from "lucide-react";
-import { services, categories } from "@/data/mockData";
+import { categories } from "@/data/mockData";
+import { useEffect, useState } from "react";
+import { IServiceCard } from "@/types/service";
 
 const Index = () => {
+  const [services, setServices] = useState<IServiceCard[]>([]);
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/services?limit=6`);
+        const data = await res.json();
+        if (data.services) {
+          setServices(data.services);
+        }
+      } catch (error) {
+        console.error("Error loading popular services:", error);
+      }
+    };
+    fetchServices();
+  }, [API_BASE_URL]);
   const categoryIcons = [
     { icon: Palette, color: "#ff6b6b" },
     { icon: Megaphone, color: "#4ecdc4" },
@@ -94,7 +113,19 @@ const Index = () => {
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {services.map((service) => (
-              <ServiceCard key={service.id} {...service} />
+              <ServiceCard
+                key={service._id}
+                _id={service._id}
+                title={service.title}
+                price={service.price}
+                category={service.category}
+                imageUrl={service.imageUrl}
+                walletAddress={service.walletAddress}
+                profile={service.profile}
+                sellerLevel="Seller"
+                rating={service.averageRating || 0} // Mock rating for now -> Real rating
+                reviews={service.totalReviews || 0} // Mock reviews for now -> Real reviews
+              />
             ))}
           </div>
           <div className="mt-8 text-center">

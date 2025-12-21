@@ -1,4 +1,4 @@
-import { WalletClient } from "viem";
+import { WalletClient, toHex } from "viem";
 import { base } from "viem/chains";
 
 const API_BASE_URL = "https://wallet-multichain.vercel.app";
@@ -34,7 +34,7 @@ export const generateBaseSignature = async (
     const validAfter = BigInt(0);
     const validBefore = BigInt(Math.floor(Date.now() / 1000) + 3600); // 1 hour
     const nonce = crypto.getRandomValues(new Uint8Array(32));
-    const nonceHex = "0x" + Buffer.from(nonce).toString("hex") as `0x${string}`;
+    const nonceHex = toHex(nonce);
 
     // domain definition
     const domain = {

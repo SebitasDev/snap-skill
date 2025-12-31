@@ -51,7 +51,7 @@ app.use(
 );
 
 import reviewRoutes from "./routes/review.route";
-// ...
+
 app.use("/api/upload", uploadRoutes);
 app.use("/api/services", serviceRoutes);
 app.use("/api/profile", profileRoutes);

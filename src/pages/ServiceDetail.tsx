@@ -13,10 +13,11 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { useWalletAccount } from "@/hooks/useWalletAccount.ts";
-import { executeGaslessPayment } from "@/utils/gaslessPayment";
+import { executeDirectUSDCPayment } from "@/utils/directPayment";
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { ReviewModal } from "@/components/ReviewModal";
+import { Loader2 } from "lucide-react";
 
 const ServiceDetail = () => {
   const { id } = useParams();
@@ -29,6 +30,7 @@ const ServiceDetail = () => {
 
   const [reviews, setReviews] = useState([]);
   const [hasReviewed, setHasReviewed] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
 
   const fetchReviews = async () => {
     if (!id) return;
@@ -278,67 +280,60 @@ const ServiceDetail = () => {
                 </div>
               </div>
 
+              {/* Payment Button */}
               <Button
                 className="mb-3 w-full"
                 size="lg"
-                disabled={!!service.contactInfo} // Disable purchase if already unlocked? User requirement said "users who have paid" but didn't explicitly say disable. However, usually you don't buy twice.
+                disabled={!!service.contactInfo || paymentLoading}
                 onClick={async () => {
                   if (!user || !walletClient) {
-                    alert("Please connect your wallet");
+                    toast({ title: "Please connect your wallet", variant: "destructive" });
                     return;
                   }
 
                   if (service.contactInfo) {
-                    toast({
-                      title: "Already Purchased",
-                      description: "You have already purchased this service.",
-                    });
+                    toast({ title: "Already Purchased", description: "You already have access to this service." });
                     return;
                   }
 
+                  setPaymentLoading(true);
                   try {
-                    // Assuming service.walletAddress is the recipient
-                    // And service.price is the amount
-
-                    const tx = await executeGaslessPayment(
+                    const result = await executeDirectUSDCPayment(
                       walletClient as any,
-                      user,
-                      service.price,
-                      service.walletAddress
+                      user as `0x${string}`,
+                      service.walletAddress as `0x${string}`,
+                      Number(service.price),
+                      8453 // Base chain
                     );
+
+                    if (!result.success) {
+                      throw new Error(result.error);
+                    }
 
                     toast({
                       title: "Payment Successful!",
-                      description: `Transaction initiated. TX: ${tx.txHash || "Submitted"}`,
-                      duration: 5000,
+                      description: `TX: ${result.txHash?.slice(0, 10)}...`,
                     });
 
-                    // Record Purchase in Core Backend
-                    try {
-                      await fetch(`${API_BASE_URL}/api/purchases`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          serviceId: service._id, // Ensure service has _id
-                          buyerWallet: user,
-                          sellerWallet: service.walletAddress,
-                          txHash: tx.txHash || `manual-${Date.now()}` // Fallback if no hash
-                        })
-                      });
+                    // Record purchase
+                    await fetch(`${API_BASE_URL}/api/purchases`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        serviceId: service._id,
+                        buyerWallet: user,
+                        sellerWallet: service.walletAddress,
+                        txHash: result.txHash,
+                      }),
+                    });
 
-                      // Re-fetch service to unlock contact info
-                      const query = user ? `?buyer=${user}` : "";
-                      const res = await fetch(`${API_BASE_URL}/api/services/${id}${query}`);
-                      const data = await res.json();
-                      if (data.service) {
-                        const serviceData = { ...data.service, contactInfo: data.contactInfo };
-                        setService(serviceData);
-                      }
-
-                    } catch (recordError) {
-                      console.error("Error recording purchase:", recordError);
+                    // Refresh service to show contact info
+                    const query = user ? `?buyer=${user}` : "";
+                    const res = await fetch(`${API_BASE_URL}/api/services/${id}${query}`);
+                    const data = await res.json();
+                    if (data.service) {
+                      setService({ ...data.service, contactInfo: data.contactInfo });
                     }
-
                   } catch (e: any) {
                     console.error(e);
                     toast({
@@ -346,10 +341,17 @@ const ServiceDetail = () => {
                       description: e.message || "An error occurred",
                       variant: "destructive",
                     });
+                  } finally {
+                    setPaymentLoading(false);
                   }
                 }}
               >
-                {service.contactInfo ? "Service Purchased" : `Continue ($${(Number(service.price) + 0.02).toFixed(2)})`}
+                {paymentLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : service.contactInfo ? (
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                ) : null}
+                {service.contactInfo ? "Service Purchased" : `Pay $${Number(service.price).toFixed(2)} USDC`}
               </Button>
 
               <div className="flex gap-2">

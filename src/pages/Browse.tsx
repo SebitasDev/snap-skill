@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import ServiceCard from "@/components/ServiceCard";
 import { Button } from "@/components/ui/button";
@@ -10,13 +11,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Slider } from "@/components/ui/slider";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { IServiceCard } from "@/types/service";
 
 const Browse = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialCategory = searchParams.get("category") || "All";
+
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [category, setCategory] = useState("All");
+  const [category, setCategory] = useState(initialCategory);
+
+  // Advanced Filters State
+  const [sortBy, setSortBy] = useState("relevance");
+  const [priceRange, setPriceRange] = useState([0, 1000]);
+  const [minRating, setMinRating] = useState(0);
+
   const [services, setServices] = useState<IServiceCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -43,7 +59,14 @@ const Browse = () => {
           limit: "12",
           search: debouncedSearch,
           category: category,
+          sortBy: sortBy,
+          minPrice: priceRange[0].toString(),
+          maxPrice: priceRange[1].toString(),
         });
+
+        if (minRating > 0) {
+          queryParams.append("minRating", minRating.toString());
+        }
 
         const res = await fetch(`${API_BASE_URL}/api/services?${queryParams}`);
         const data = await res.json();
@@ -61,10 +84,28 @@ const Browse = () => {
     };
 
     fetchServices();
-  }, [debouncedSearch, category, page, API_BASE_URL]);
+  }, [debouncedSearch, category, page, API_BASE_URL, sortBy, priceRange, minRating]);
+
+  useEffect(() => {
+    const catParam = searchParams.get("category");
+    if (catParam && catParam !== category) {
+      setCategory(catParam);
+    } else if (!catParam && category !== "All") {
+      setCategory("All");
+    }
+  }, [searchParams]);
 
   const handleCategoryChange = (newCategory: string) => {
     setCategory(newCategory);
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      if (newCategory === "All") {
+        newParams.delete("category");
+      } else {
+        newParams.set("category", newCategory);
+      }
+      return newParams;
+    });
     setPage(1);
   };
 
@@ -100,7 +141,7 @@ const Browse = () => {
                 className="pl-10"
               />
             </div>
-            <Select defaultValue="relevance">
+            <Select defaultValue="relevance" value={sortBy} onValueChange={setSortBy}>
               <SelectTrigger className="w-full md:w-48">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
@@ -111,10 +152,63 @@ const Browse = () => {
                 <SelectItem value="price-high">Price: High to Low</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" className="w-full md:w-auto">
-              <SlidersHorizontal className="mr-2 h-4 w-4" />
-              Filters
-            </Button>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full md:w-auto relative">
+                  <SlidersHorizontal className="mr-2 h-4 w-4" />
+                  Filters
+                  {(priceRange[0] > 0 || priceRange[1] < 1000 || minRating > 0) && (
+                    <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-primary ring-2 ring-background" />
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80" align="end">
+                <div className="grid gap-4">
+                  <div className="space-y-2">
+                    <h4 className="font-medium leading-none">Price Range</h4>
+                    <p className="text-sm text-muted-foreground">
+                      ${priceRange[0]} - ${priceRange[1]}
+                    </p>
+                    <Slider
+                      defaultValue={[0, 1000]}
+                      max={1000}
+                      step={10}
+                      value={priceRange}
+                      onValueChange={setPriceRange}
+                      className="py-4"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="font-medium leading-none">Minimum Rating</h4>
+                    <div className="flex gap-2">
+                      {[0, 3, 4, 4.5].map((rating) => (
+                        <Button
+                          key={rating}
+                          variant={minRating === rating ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setMinRating(rating)}
+                          className="flex-1"
+                        >
+                          {rating === 0 ? "Any" : `${rating}+`}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setPriceRange([0, 1000]);
+                      setMinRating(0);
+                    }}
+                    className="w-full text-muted-foreground hover:text-foreground"
+                  >
+                    Reset Filters
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 

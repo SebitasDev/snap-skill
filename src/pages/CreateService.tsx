@@ -18,7 +18,7 @@ const CreateService = () => {
   const [formData, setFormData] = useState({
     title: "",
     category: "",
-    price: import.meta.env.MODE === "development" ? 0.01 : 10,
+    price: 10,
     deliveryTime: "3 days",
     revisions: "Unlimited",
     description: "",
@@ -110,8 +110,8 @@ const CreateService = () => {
         .split(/\s+/)
         .filter(Boolean).length;
       return (
-        wordCount >= 10 &&
-        formData.description.length >= 100 &&
+        wordCount >= 3 &&
+        formData.description.length >= 50 &&
         formData.imageFile !== null &&
         formData.includes.length > 0
       );

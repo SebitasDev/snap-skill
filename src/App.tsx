@@ -11,6 +11,7 @@ import NotFound from "./pages/NotFound";
 import { wagmiConfig } from "../wagmi.config.ts";
 import { WagmiProvider } from "wagmi";
 import CreateService from "./pages/CreateService.tsx";
+import TopSellers from "./pages/TopSellers";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/service/:id" element={<ServiceDetail />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/createservice" element={<CreateService />} />
+            <Route path="/top-sellers" element={<TopSellers />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -17,8 +18,9 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
-import { Search, SlidersHorizontal } from "lucide-react";
+import { Search, SlidersHorizontal, Heart } from "lucide-react";
 import { IServiceCard } from "@/types/service";
+import { useFavorites } from "@/hooks/useFavorites";
 
 const Browse = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -32,6 +34,9 @@ const Browse = () => {
   const [sortBy, setSortBy] = useState("relevance");
   const [priceRange, setPriceRange] = useState([0, 1000]);
   const [minRating, setMinRating] = useState(0);
+  const [showFavorites, setShowFavorites] = useState(false);
+
+  const { favorites } = useFavorites();
 
   const [services, setServices] = useState<IServiceCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +69,17 @@ const Browse = () => {
           maxPrice: priceRange[1].toString(),
         });
 
+        if (showFavorites) {
+          if (favorites.length === 0) {
+            setServices([]);
+            setTotalPages(1);
+            setTotalServices(0);
+            setLoading(false);
+            return;
+          }
+          queryParams.append("ids", favorites.join(","));
+        }
+
         if (minRating > 0) {
           queryParams.append("minRating", minRating.toString());
         }
@@ -84,7 +100,7 @@ const Browse = () => {
     };
 
     fetchServices();
-  }, [debouncedSearch, category, page, API_BASE_URL, sortBy, priceRange, minRating]);
+  }, [debouncedSearch, category, page, API_BASE_URL, sortBy, priceRange, minRating, showFavorites, favorites]);
 
   useEffect(() => {
     const catParam = searchParams.get("category");
@@ -195,12 +211,24 @@ const Browse = () => {
                       ))}
                     </div>
                   </div>
+                  <div className="space-y-2">
+                    <h4 className="font-medium leading-none">Favorites</h4>
+                    <Button
+                      variant={showFavorites ? "default" : "outline"}
+                      className="w-full justify-start"
+                      onClick={() => setShowFavorites(!showFavorites)}
+                    >
+                      <Heart className={`mr-2 h-4 w-4 ${showFavorites ? "fill-current" : ""}`} />
+                      {showFavorites ? "Showing Favorites Only" : "Show Favorites Only"}
+                    </Button>
+                  </div>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => {
                       setPriceRange([0, 1000]);
                       setMinRating(0);
+                      setShowFavorites(false);
                     }}
                     className="w-full text-muted-foreground hover:text-foreground"
                   >
@@ -210,6 +238,19 @@ const Browse = () => {
               </PopoverContent>
             </Popover>
           </div>
+        </div>
+
+        {/* Favorites Toggle (Quick Access) */}
+        <div className="mb-4">
+          <Button
+            variant={showFavorites ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowFavorites(!showFavorites)}
+            className="gap-2"
+          >
+            <Heart className={`h-4 w-4 ${showFavorites ? "fill-current" : ""}`} />
+            My Favorites
+          </Button>
         </div>
 
         {/* Category Filters */}

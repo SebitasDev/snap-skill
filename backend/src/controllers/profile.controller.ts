@@ -192,14 +192,23 @@ export const getProfileStats = async (req: Request, res: Response) => {
 
         // 4. Calculate Average Rating
         const allReviews = await Review.find({ serviceId: { $in: myServiceIds } });
-        const totalRating = allReviews.reduce((acc, r) => acc + r.rating, 0);
-        const averageRating = allReviews.length > 0 ? (totalRating / allReviews.length).toFixed(1) : "0";
+        console.log("DEBUG: allReviews count:", allReviews.length);
+        console.log("DEBUG: allReviews ratings:", allReviews.map(r => r.rating));
+
+        const totalRating = allReviews.reduce((acc, r) => acc + (Number(r.rating) || 0), 0);
+        console.log("DEBUG: totalRating:", totalRating);
+
+        const averageRating = allReviews.length > 0 ? (totalRating / allReviews.length) : 0;
+        console.log("DEBUG: averageRating (raw):", averageRating); // Keep detailed log
+
+        // Return strict number
+        const formattedRating = Number(averageRating.toFixed(1));
 
         return res.status(200).json({
             stats: {
                 totalEarnings,
                 mostPurchasedService,
-                averageRating: Number(averageRating),
+                averageRating: formattedRating,
                 totalReviews: allReviews.length,
                 recentReviews,
                 totalUniqueClients,
@@ -215,3 +224,127 @@ export const getProfileStats = async (req: Request, res: Response) => {
 };
 
 
+export const getTopSellers = async (req: Request, res: Response) => {
+    try {
+        const topSellers = await Purchase.aggregate([
+            {
+                $lookup: {
+                    from: "services",
+                    localField: "serviceId",
+                    foreignField: "_id",
+                    as: "service"
+                }
+            },
+            { $unwind: "$service" },
+            {
+                $group: {
+                    _id: "$sellerWallet",
+                    totalEarnings: { $sum: "$service.price" },
+                    totalSales: { $sum: 1 },
+                    sales: {
+                        $push: {
+                            _id: "$service._id",
+                            title: "$service.title",
+                            price: "$service.price",
+                            imageUrl: "$service.imageUrl"
+                        }
+                    }
+                }
+            },
+            { $sort: { totalEarnings: -1 } },
+            { $limit: 10 },
+            {
+                $lookup: {
+                    from: "profiles",
+                    localField: "_id",
+                    foreignField: "walletAddress",
+                    as: "profile"
+                }
+            },
+            { $unwind: { path: "$profile", preserveNullAndEmptyArrays: true } }
+        ]);
+
+        const formattedSellers = topSellers.map(seller => {
+            const serviceCounts: Record<string, any> = {};
+            let topService: any = null;
+            let maxCount = 0;
+
+            seller.sales.forEach((s: any) => {
+                const id = s._id.toString();
+                if (!serviceCounts[id]) serviceCounts[id] = { ...s, count: 0 };
+                serviceCounts[id].count++;
+
+                if (serviceCounts[id].count > maxCount) {
+                    maxCount = serviceCounts[id].count;
+                    topService = serviceCounts[id];
+                }
+            });
+
+            return {
+                walletAddress: seller._id,
+                name: seller.profile?.name || "Unknown",
+                imageUrl: seller.profile?.imageUrl || "",
+                totalEarnings: seller.totalEarnings,
+                totalSales: seller.totalSales,
+                topService: topService ? {
+                    _id: topService._id,
+                    title: topService.title,
+                    imageUrl: topService.imageUrl,
+                    price: topService.price
+                } : null
+            };
+        });
+
+        return res.status(200).json({ sellers: formattedSellers });
+
+    } catch (error) {
+        console.error("ERROR GET TOP SELLERS:", error);
+        return res.status(500).json({ message: "Server error", error });
+    }
+};
+
+export const toggleFavorite = async (req: Request, res: Response) => {
+    try {
+        const { walletAddress } = req.params;
+        const { serviceId } = req.body;
+
+        if (!walletAddress || !serviceId) {
+            return res.status(400).json({ message: "Missing required fields" });
+        }
+
+        const profile = await Profile.findOne({ walletAddress });
+        if (!profile) {
+            return res.status(404).json({ message: "Profile not found" });
+        }
+
+        // Initialize favorites if undefined (for old records)
+        if (!profile.favorites) {
+            profile.favorites = []; // @ts-ignore
+        }
+
+        // Assuming favorites are stored as ObjectIds or Strings, let's treat as strings for comparison
+        // @ts-ignore
+        const index = profile.favorites.findIndex(fav => fav.toString() === serviceId);
+
+        let isFavorite = false;
+
+        if (index > -1) {
+            // Remove
+            // @ts-ignore
+            profile.favorites.splice(index, 1);
+            isFavorite = false;
+        } else {
+            // Add
+            // @ts-ignore
+            profile.favorites.push(serviceId);
+            isFavorite = true;
+        }
+
+        await profile.save();
+
+        return res.status(200).json({ message: "Success", isFavorite, favorites: profile.favorites });
+    } catch (error) {
+        console.error("ERROR TOGGLE FAVORITE:", error);
+        return res.status(500).json({ message: "Server error", error });
+    }
+};

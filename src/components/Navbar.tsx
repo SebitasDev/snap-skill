@@ -1,11 +1,18 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Star } from "lucide-react";
+import { Search, Star, Menu } from "lucide-react";
 import { ConnectWalletButton } from "@/components/ConnectWalletButton.tsx";
 import { useWalletAccount } from "@/hooks/useWalletAccount";
 import { useState, useEffect, useRef } from "react";
 import { IServiceCard } from "@/types/service";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 const Navbar = () => {
   const { isConnected } = useWalletAccount();
@@ -72,6 +79,7 @@ const Navbar = () => {
             <span className="text-2xl font-bold text-primary">skillhub</span>
           </Link>
 
+          {/* Desktop Search */}
           <div className="hidden md:flex flex-1 max-w-md mx-8">
             <div className="relative w-full" ref={searchRef}>
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -133,25 +141,81 @@ const Navbar = () => {
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-4">
             <Button variant="ghost" asChild>
               <Link to="/browse">Browse</Link>
+            </Button>
+            <Button variant="ghost" asChild>
+              <Link to="/top-sellers">Top Sellers</Link>
             </Button>
             <Button variant="ghost" asChild>
               <Link to="/profile">Profile</Link>
             </Button>
             {isConnected && (
-              <Button variant="outline">
+              <Button variant="outline" asChild>
                 <Link to="/createservice">Offer Service</Link>
               </Button>
             )}
             <Button asChild>
               <Link to="/browse">Get Started</Link>
             </Button>
-            <Button asChild>
+            <div className="ml-2">
               <ConnectWalletButton />
-            </Button>
+            </div>
           </div>
+
+          {/* Mobile Navigation */}
+          <div className="md:hidden">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Menu className="h-6 w-6" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right">
+                <SheetHeader className="text-left mb-4">
+                  <SheetTitle>Menu</SheetTitle>
+                </SheetHeader>
+                <div className="flex flex-col gap-4">
+                  {/* Mobile Search - Simplified version without dropdown for now, or just link to browse */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Search..."
+                      className="pl-10"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          navigate(`/browse?search=${query}`);
+                        }
+                      }}
+                    />
+                  </div>
+
+                  <Link to="/browse" className="text-lg font-medium hover:text-primary transition-colors">Browse</Link>
+                  <Link to="/top-sellers" className="text-lg font-medium hover:text-primary transition-colors">Top Sellers</Link>
+                  <Link to="/profile" className="text-lg font-medium hover:text-primary transition-colors">Profile</Link>
+                  {isConnected && (
+                    <Link to="/createservice" className="text-lg font-medium hover:text-primary transition-colors">Offer Service</Link>
+                  )}
+
+                  <div className="h-px bg-border my-2" />
+
+                  <div className="flex flex-col gap-2">
+                    <Button asChild className="w-full justify-start">
+                      <Link to="/browse">Get Started</Link>
+                    </Button>
+                    <div className="w-full">
+                      <ConnectWalletButton />
+                    </div>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
+
         </div>
       </div>
     </nav>

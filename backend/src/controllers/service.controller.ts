@@ -131,8 +131,14 @@ export const getServices = async (req: Request, res: Response) => {
     const ratingMin = req.query.minRating ? Number(req.query.minRating) : undefined;
     const sortBy = (req.query.sortBy as string) || "relevance";
     const category = (req.query.category as string) || "All";
+    const ids = (req.query.ids as string) || "";
 
     const query: any = {};
+
+    if (ids) {
+      const idList = ids.split(",");
+      query._id = { $in: idList.map(id => new mongoose.Types.ObjectId(id)) };
+    }
 
     if (search) {
       query.title = { $regex: search, $options: "i" };

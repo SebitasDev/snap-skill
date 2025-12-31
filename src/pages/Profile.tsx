@@ -10,6 +10,13 @@ import { CheckCircle2, User, Upload, Plus, X, LayoutDashboard, Settings, Star, D
 import { Badge } from "../components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 
 interface DashboardStats {
   totalEarnings: number;
@@ -459,22 +466,46 @@ const Profile = () => {
                   <div className="space-y-2">
                     <Label>Skills</Label>
                     <div className="flex gap-2">
-                      <Input
+                      <Select
                         value={skillInput}
-                        onChange={(e) => setSkillInput(e.target.value)}
-                        placeholder="Add a skill (e.g. Graphic Design)"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            addSkill();
+                        onValueChange={(val) => {
+                          if (val && !skills.includes(val)) {
+                            setSkills([...skills, val]);
+                            setSkillInput(""); // Reset select if needed, though Select value binds to this
                           }
                         }}
-                      />
-                      <Button type="button" onClick={addSkill} size="icon">
-                        <Plus className="h-4 w-4" />
-                      </Button>
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select a skill to add..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="React" disabled className="font-bold opacity-100 bg-muted">Development</SelectItem>
+                          {["React", "Node.js", "TypeScript", "Solidity", "Smart Contracts", "Web3", "Python", "Go", "Rust"].map(s => (
+                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                          ))}
+
+                          <SelectItem value="Design" disabled className="font-bold opacity-100 bg-muted mt-2">Design</SelectItem>
+                          {["Logo Design", "UI/UX", "Illustration", "Photoshop", "Figma", "3D Modeling", "Video Editing"].map(s => (
+                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                          ))}
+
+                          <SelectItem value="Marketing" disabled className="font-bold opacity-100 bg-muted mt-2">Marketing</SelectItem>
+                          {["SEO", "Social Media", "Content Writing", "Email Marketing", "Copywriting", "Ads Management"].map(s => (
+                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                          ))}
+
+                          <SelectItem value="Business" disabled className="font-bold opacity-100 bg-muted mt-2">Business</SelectItem>
+                          {["Consulting", "Project Management", "Translation", "Data Entry", "Virtual Assistant"].map(s => (
+                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
+
                     <div className="flex flex-wrap gap-2 mt-2">
+                      {skills.length === 0 && (
+                        <p className="text-sm text-muted-foreground italic">No skills selected yet.</p>
+                      )}
                       {skills.map(skill => (
                         <Badge key={skill} variant="secondary" className="gap-1 pl-3">
                           {skill}

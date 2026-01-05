@@ -324,6 +324,7 @@ const ServiceDetail = () => {
                         buyerWallet: user,
                         sellerWallet: service.walletAddress,
                         txHash: result.txHash,
+                        blockNumber: result.blockNumber,
                       }),
                     });
 

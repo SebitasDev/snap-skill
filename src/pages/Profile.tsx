@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -6,7 +7,7 @@ import { Textarea } from "../components/ui/textarea";
 import { Label } from "../components/ui/label";
 import { useWalletAccount } from "../hooks/useWalletAccount";
 import { useToast } from "../hooks/use-toast";
-import { CheckCircle2, User, Upload, Plus, X, LayoutDashboard, Settings, Star, DollarSign, Award, MessageSquare } from "lucide-react";
+import { CheckCircle2, User, Upload, Plus, X, LayoutDashboard, Settings, Star, DollarSign, Award, MessageSquare, Users, ArrowRight } from "lucide-react";
 import { Badge } from "../components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
@@ -29,6 +30,14 @@ interface DashboardStats {
   salesByCategory: Record<string, number>;
 }
 
+interface SellerRelationship {
+  sellerWallet: string;
+  sellerProfile?: {
+    name: string;
+    imageUrl: string;
+  };
+}
+
 const Profile = () => {
   const { user } = useWalletAccount();
   const { toast } = useToast();
@@ -49,6 +58,10 @@ const Profile = () => {
   // Dashboard state
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
+  
+  // Buyer relationships (sellers they've worked with)
+  const [sellerRelationships, setSellerRelationships] = useState<SellerRelationship[]>([]);
+  const [loadingRelationships, setLoadingRelationships] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
@@ -100,6 +113,53 @@ const Profile = () => {
 
     if (user) {
       fetchStats();
+    }
+  }, [user, API_BASE_URL]);
+
+  // Fetch seller relationships (as a buyer)
+  useEffect(() => {
+    const fetchRelationships = async () => {
+      if (!user) return;
+      setLoadingRelationships(true);
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/transfers/relationships/${user}`);
+        if (res.ok) {
+          const data = await res.json();
+          const sellers = data.sellers || [];
+          
+          // Fetch profiles for each seller
+          const relationshipsWithProfiles = await Promise.all(
+            sellers.map(async (sellerWallet: string) => {
+              try {
+                const profileRes = await fetch(`${API_BASE_URL}/api/profile/${sellerWallet}`);
+                if (profileRes.ok) {
+                  const profileData = await profileRes.json();
+                  return {
+                    sellerWallet,
+                    sellerProfile: profileData.profile ? {
+                      name: profileData.profile.name,
+                      imageUrl: profileData.profile.imageUrl,
+                    } : undefined,
+                  };
+                }
+              } catch {
+                // Ignore profile fetch errors
+              }
+              return { sellerWallet };
+            })
+          );
+          
+          setSellerRelationships(relationshipsWithProfiles);
+        }
+      } catch (error) {
+        console.error("Error fetching relationships", error);
+      } finally {
+        setLoadingRelationships(false);
+      }
+    };
+
+    if (user) {
+      fetchRelationships();
     }
   }, [user, API_BASE_URL]);
 
@@ -386,6 +446,59 @@ const Profile = () => {
                   <div className="text-center py-12 border rounded-lg bg-muted/20">
                     <MessageSquare className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
                     <p className="text-muted-foreground">No reviews yet.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Seller Relationships (as a buyer) */}
+              <div className="grid gap-4 mt-8">
+                <h2 className="text-xl font-semibold">Sellers You've Worked With</h2>
+                {loadingRelationships ? (
+                  <p className="text-muted-foreground">Loading...</p>
+                ) : sellerRelationships.length > 0 ? (
+                  <div className="grid gap-3">
+                    {sellerRelationships.map((rel) => (
+                      <Card key={rel.sellerWallet}>
+                        <CardContent className="flex items-center justify-between p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 overflow-hidden rounded-full bg-muted">
+                              {rel.sellerProfile?.imageUrl ? (
+                                <img
+                                  src={rel.sellerProfile.imageUrl}
+                                  alt={rel.sellerProfile.name}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center text-sm font-medium">
+                                  {rel.sellerWallet.slice(0, 2)}
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-medium">
+                                {rel.sellerProfile?.name || `${rel.sellerWallet.slice(0, 6)}...${rel.sellerWallet.slice(-4)}`}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                View payment history & leave reviews
+                              </p>
+                            </div>
+                          </div>
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link to={`/relationship/${rel.sellerWallet}`}>
+                              <ArrowRight className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 border rounded-lg bg-muted/20">
+                    <Users className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
+                    <p className="text-muted-foreground">No seller relationships yet.</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Purchase a service to establish a relationship.
+                    </p>
                   </div>
                 )}
               </div>

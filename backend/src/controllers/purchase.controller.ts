@@ -2,12 +2,14 @@ import { Request, Response } from "express";
 import { Purchase } from "../models/purchase.model";
 import { Service } from "../models/service.model";
 
+const CHAIN_ID = 8453; // Base mainnet
+
 // Create a new purchase record
 export const createPurchase = async (req: Request, res: Response) => {
     try {
-        const { serviceId, buyerWallet, sellerWallet, txHash } = req.body;
+        const { serviceId, buyerWallet, sellerWallet, txHash, blockNumber } = req.body;
 
-        if (!serviceId || !buyerWallet || !sellerWallet || !txHash) {
+        if (!serviceId || !buyerWallet || !sellerWallet || !txHash || !blockNumber) {
             return res.status(400).json({ message: "Missing required fields" });
         }
 
@@ -25,9 +27,11 @@ export const createPurchase = async (req: Request, res: Response) => {
 
         const purchase = await Purchase.create({
             serviceId,
-            buyerWallet,
-            sellerWallet,
-            txHash,
+            buyerWallet: buyerWallet.toLowerCase(),
+            sellerWallet: sellerWallet.toLowerCase(),
+            txHash: txHash.toLowerCase(),
+            blockNumber: blockNumber.toString(),
+            chainId: CHAIN_ID,
         });
 
         return res.status(201).json({

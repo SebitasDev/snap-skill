@@ -1,4 +1,4 @@
-import { WalletClient, parseUnits } from "viem";
+import { WalletClient, parseUnits, createPublicClient, http } from "viem";
 import { base, arbitrum } from "viem/chains";
 
 // USDC Contract Addresses
@@ -23,6 +23,7 @@ const ERC20_ABI = [
 export interface PaymentResult {
   success: boolean;
   txHash?: string;
+  blockNumber?: string;
   error?: string;
 }
 
@@ -45,6 +46,12 @@ export async function executeDirectUSDCPayment(
     // Convert to USDC decimals (6)
     const amount = parseUnits(amountUSD.toFixed(6), 6);
 
+    // Create public client to wait for receipt
+    const publicClient = createPublicClient({
+      chain: chainId === base.id ? base : arbitrum,
+      transport: http(),
+    });
+
     // Execute transfer - MetaMask will show balance and handle gas
     const hash = await walletClient.writeContract({
       address: usdcAddress,
@@ -55,7 +62,14 @@ export async function executeDirectUSDCPayment(
       chain: chainId === base.id ? base : arbitrum,
     });
 
-    return { success: true, txHash: hash };
+    // Wait for transaction receipt to get blockNumber
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+    return {
+      success: true,
+      txHash: hash,
+      blockNumber: receipt.blockNumber.toString(),
+    };
   } catch (error: any) {
     console.error("USDC payment error:", error);
 

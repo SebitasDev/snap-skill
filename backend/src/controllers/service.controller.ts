@@ -259,7 +259,7 @@ export const getServiceById = async (req: Request, res: Response) => {
     if (buyer) {
       const purchase = await Purchase.findOne({
         serviceId: id,
-        buyerWallet: buyer,
+        buyerWallet: (buyer as string).toLowerCase(),
       });
 
       if (purchase) {

@@ -15,8 +15,8 @@ export const getTransfers = async (req: Request, res: Response) => {
     }
 
     const result = await getCachedTransfersForRelationship(
-      buyerWallet,
-      sellerWallet
+      buyerWallet.toLowerCase(),
+      sellerWallet.toLowerCase()
     );
 
     return res.status(200).json(result);
@@ -35,7 +35,7 @@ export const refreshTransfersEndpoint = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Missing wallet addresses" });
     }
 
-    const result = await refreshTransfers(buyerWallet, sellerWallet);
+    const result = await refreshTransfers(buyerWallet.toLowerCase(), sellerWallet.toLowerCase());
 
     if (result.error) {
       return res.status(200).json({

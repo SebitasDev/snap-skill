@@ -256,8 +256,19 @@ export const getTopSellers = async (req: Request, res: Response) => {
             {
                 $lookup: {
                     from: "profiles",
-                    localField: "_id",
-                    foreignField: "walletAddress",
+                    let: { sellerWallet: "$_id" },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $eq: [
+                                        { $toLower: "$walletAddress" },
+                                        { $toLower: "$$sellerWallet" },
+                                    ],
+                                },
+                            },
+                        },
+                    ],
                     as: "profile"
                 }
             },
@@ -312,7 +323,7 @@ export const toggleFavorite = async (req: Request, res: Response) => {
             return res.status(400).json({ message: "Missing required fields" });
         }
 
-        const profile = await Profile.findOne({ walletAddress });
+        const profile = await Profile.findOne({ walletAddress: walletAddress.toLowerCase() });
         if (!profile) {
             return res.status(404).json({ message: "Profile not found" });
         }

@@ -182,8 +182,19 @@ export const getReviews = async (req: Request, res: Response) => {
       {
         $lookup: {
           from: "profiles",
-          localField: "reviewerWallet",
-          foreignField: "walletAddress",
+          let: { reviewerWallet: "$reviewerWallet" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: [
+                    { $toLower: "$walletAddress" },
+                    { $toLower: "$$reviewerWallet" },
+                  ],
+                },
+              },
+            },
+          ],
           as: "reviewerProfile",
         },
       },

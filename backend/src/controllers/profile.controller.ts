@@ -25,7 +25,10 @@ export const createUpdateProfile = async (
         console.log("File:", req.file);
 
         const body = req.body || {};
-        const { name, bio, skills, walletAddress, whatsapp, telegram } = body;
+        let { name, bio, skills, walletAddress, whatsapp, telegram } = body;
+
+        // Normalize wallet
+        if (walletAddress) walletAddress = walletAddress.toLowerCase();
 
         if (!walletAddress) {
             return res.status(400).json({ message: "Wallet address is required" });
@@ -79,7 +82,7 @@ export const createUpdateProfile = async (
         };
 
         const profile = await Profile.findOneAndUpdate(
-            { walletAddress },
+            { walletAddress: walletAddress.toLowerCase() },
             profileData,
             { new: true, upsert: true }
         );
@@ -99,7 +102,10 @@ export const getProfile = async (req: Request, res: Response) => {
     try {
         const { walletAddress } = req.params;
 
-        const profile = await Profile.findOne({ walletAddress });
+        // Case-insensitive lookup
+        const profile = await Profile.findOne({
+            walletAddress: { $regex: new RegExp(`^${walletAddress}$`, "i") }
+        });
 
         if (!profile) {
             return res.status(404).json({ message: "Profile not found" });

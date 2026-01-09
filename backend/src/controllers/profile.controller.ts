@@ -4,7 +4,6 @@ import { Purchase } from "../models/purchase.model";
 import { Service } from "../models/service.model";
 import { Review } from "../models/review.model";
 import cloudinary from "../config/cloudinary";
-import { isEvmAddress } from "../utils/address";
 
 interface CreateProfileBody {
     name: string;
@@ -25,7 +24,10 @@ export const createUpdateProfile = async (
         console.log("File:", req.file);
 
         const body = req.body || {};
-        const { name, bio, skills, walletAddress, whatsapp, telegram } = body;
+        let { name, bio, skills, walletAddress, whatsapp, telegram } = body;
+
+        // Normalize wallet
+        if (walletAddress) walletAddress = walletAddress.toLowerCase();
 
         if (!walletAddress) {
             return res.status(400).json({ message: "Wallet address is required" });
@@ -79,7 +81,7 @@ export const createUpdateProfile = async (
         };
 
         const profile = await Profile.findOneAndUpdate(
-            { walletAddress },
+            { walletAddress: walletAddress.toLowerCase() },
             profileData,
             { new: true, upsert: true }
         );
@@ -99,7 +101,10 @@ export const getProfile = async (req: Request, res: Response) => {
     try {
         const { walletAddress } = req.params;
 
-        const profile = await Profile.findOne({ walletAddress });
+        // Case-insensitive lookup
+        const profile = await Profile.findOne({
+            walletAddress: { $regex: new RegExp(`^${walletAddress}$`, "i") }
+        });
 
         if (!profile) {
             return res.status(404).json({ message: "Profile not found" });
@@ -238,7 +243,7 @@ export const getTopSellers = async (req: Request, res: Response) => {
             { $unwind: "$service" },
             {
                 $group: {
-                    _id: "$sellerWallet",
+                    _id: { $toLower: "$sellerWallet" },
                     totalEarnings: { $sum: "$service.price" },
                     totalSales: { $sum: 1 },
                     sales: {
@@ -256,8 +261,19 @@ export const getTopSellers = async (req: Request, res: Response) => {
             {
                 $lookup: {
                     from: "profiles",
-                    localField: "_id",
-                    foreignField: "walletAddress",
+                    let: { sellerWallet: "$_id" },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $eq: [
+                                        { $toLower: "$walletAddress" },
+                                        { $toLower: "$$sellerWallet" },
+                                    ],
+                                },
+                            },
+                        },
+                    ],
                     as: "profile"
                 }
             },
@@ -312,7 +328,7 @@ export const toggleFavorite = async (req: Request, res: Response) => {
             return res.status(400).json({ message: "Missing required fields" });
         }
 
-        const profile = await Profile.findOne({ walletAddress });
+        const profile = await Profile.findOne({ walletAddress: walletAddress.toLowerCase() });
         if (!profile) {
             return res.status(404).json({ message: "Profile not found" });
         }

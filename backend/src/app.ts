@@ -51,12 +51,14 @@ app.use(
 );
 
 import reviewRoutes from "./routes/review.route";
+import transferRoutes from "./routes/transfer.route";
 
 app.use("/api/upload", uploadRoutes);
 app.use("/api/services", serviceRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/purchases", purchaseRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/transfers", transferRoutes);
 
 app.use("/protected/service/:id", async (req, res, next) => {
   console.log(res.getHeaders());

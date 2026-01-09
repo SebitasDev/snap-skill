@@ -49,8 +49,8 @@ export const useSmartAccount = () => {
         try {
             const sdk = new AccountAbstraction(BASE_MAINNET as any);
 
-            // Connect using browser provider (MetaMask/Injected)
-            const { owner, smartAccount } = await sdk.connect();
+            // Connect using Wagmi walletClient (supports all connectors: MetaMask, Coinbase, WC, etc.)
+            const { owner, smartAccount } = await sdk.connect(walletClient as any);
 
             setAa(sdk);
             setOwnerAddress(owner);

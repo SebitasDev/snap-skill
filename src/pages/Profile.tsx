@@ -647,7 +647,7 @@ const Profile = () => {
 
           <TabsContent value="wallet">
             <div className="max-w-3xl mx-auto">
-              <SmartAccountCard />
+              <SmartAccountCard profileName={name} profileImage={imagePreview} />
             </div>
           </TabsContent>
         </Tabs>

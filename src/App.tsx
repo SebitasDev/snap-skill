@@ -13,6 +13,7 @@ import { WagmiProvider } from "wagmi";
 import CreateService from "./pages/CreateService.tsx";
 import TopSellers from "./pages/TopSellers";
 import Relationship from "./pages/Relationship";
+import SnapLinkPay from "./pages/SnapLinkPay";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/createservice" element={<CreateService />} />
             <Route path="/top-sellers" element={<TopSellers />} />
             <Route path="/relationship/:sellerWallet" element={<Relationship />} />
+            <Route path="/pay/:walletAddress/:amount?" element={<SnapLinkPay />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

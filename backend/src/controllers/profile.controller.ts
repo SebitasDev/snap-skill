@@ -4,7 +4,6 @@ import { Purchase } from "../models/purchase.model";
 import { Service } from "../models/service.model";
 import { Review } from "../models/review.model";
 import cloudinary from "../config/cloudinary";
-import { isEvmAddress } from "../utils/address";
 
 interface CreateProfileBody {
     name: string;
@@ -244,7 +243,7 @@ export const getTopSellers = async (req: Request, res: Response) => {
             { $unwind: "$service" },
             {
                 $group: {
-                    _id: "$sellerWallet",
+                    _id: { $toLower: "$sellerWallet" },
                     totalEarnings: { $sum: "$service.price" },
                     totalSales: { $sum: 1 },
                     sales: {

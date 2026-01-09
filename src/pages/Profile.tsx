@@ -7,11 +7,13 @@ import { Textarea } from "../components/ui/textarea";
 import { Label } from "../components/ui/label";
 import { useWalletAccount } from "../hooks/useWalletAccount";
 import { useToast } from "../hooks/use-toast";
-import { CheckCircle2, User, Upload, Plus, X, LayoutDashboard, Settings, Star, DollarSign, Award, MessageSquare, Users, ArrowRight } from "lucide-react";
+import { CheckCircle2, User, Upload, Plus, X, LayoutDashboard, Settings, Star, DollarSign, Award, MessageSquare, Users, ArrowRight, Wallet } from "lucide-react";
 import { Badge } from "../components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
+import { SmartAccountCard } from "../components/SmartAccountCard";
 import {
+
   Select,
   SelectContent,
   SelectItem,
@@ -58,7 +60,7 @@ const Profile = () => {
   // Dashboard state
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
-  
+
   // Buyer relationships (sellers they've worked with)
   const [sellerRelationships, setSellerRelationships] = useState<SellerRelationship[]>([]);
   const [loadingRelationships, setLoadingRelationships] = useState(false);
@@ -126,7 +128,7 @@ const Profile = () => {
         if (res.ok) {
           const data = await res.json();
           const sellers = data.sellers || [];
-          
+
           // Fetch profiles for each seller
           const relationshipsWithProfiles = await Promise.all(
             sellers.map(async (sellerWallet: string) => {
@@ -148,7 +150,7 @@ const Profile = () => {
               return { sellerWallet };
             })
           );
-          
+
           setSellerRelationships(relationshipsWithProfiles);
         }
       } catch (error) {
@@ -299,6 +301,10 @@ const Profile = () => {
             <TabsTrigger value="settings" className="gap-2">
               <Settings className="h-4 w-4" />
               Settings
+            </TabsTrigger>
+            <TabsTrigger value="wallet" className="gap-2">
+              <Wallet className="h-4 w-4" />
+              Wallet
             </TabsTrigger>
           </TabsList>
 
@@ -638,9 +644,15 @@ const Profile = () => {
               </form>
             </div>
           </TabsContent>
+
+          <TabsContent value="wallet">
+            <div className="max-w-3xl mx-auto">
+              <SmartAccountCard />
+            </div>
+          </TabsContent>
         </Tabs>
       </div>
-    </div>
+    </div >
   );
 };
 

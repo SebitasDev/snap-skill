@@ -9,7 +9,7 @@ export const createPurchase = async (req: Request, res: Response) => {
     try {
         const { serviceId, buyerWallet, sellerWallet, txHash, blockNumber } = req.body;
 
-        if (!serviceId || !buyerWallet || !sellerWallet || !txHash || !blockNumber) {
+        if (!serviceId || !buyerWallet || !sellerWallet || !txHash || blockNumber === undefined) {
             return res.status(400).json({ message: "Missing required fields" });
         }
 

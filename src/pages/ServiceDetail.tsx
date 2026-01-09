@@ -18,6 +18,8 @@ import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { ReviewModal } from "@/components/ReviewModal";
 import { Loader2 } from "lucide-react";
+import { useSmartAccount } from "@/hooks/useSmartAccount";
+import { parseUnits } from "viem";
 
 const ServiceDetail = () => {
   const { id } = useParams();
@@ -31,6 +33,8 @@ const ServiceDetail = () => {
   const [reviews, setReviews] = useState([]);
   const [hasReviewed, setHasReviewed] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
+
+  const { transfer, isDeployed, usdcAllowance, eoaBalance } = useSmartAccount();
 
   const fetchReviews = async () => {
     if (!id) return;
@@ -49,6 +53,14 @@ const ServiceDetail = () => {
       console.error("Error fetching reviews:", error);
     }
   };
+
+  useEffect(() => {
+    // ... code truncated ...
+  });
+
+  // ... (render) ...
+
+
 
   useEffect(() => {
     const fetchService = async () => {
@@ -281,6 +293,7 @@ const ServiceDetail = () => {
               </div>
 
               {/* Payment Button */}
+
               <Button
                 className="mb-3 w-full"
                 size="lg"
@@ -296,23 +309,70 @@ const ServiceDetail = () => {
                     return;
                   }
 
+                  // === Validations ===
+
+                  // 1. Check if Smart Account is Deployed
+                  if (!isDeployed) {
+                    toast({
+                      title: "Smart Account Not Active",
+                      description: "Please go to your Profile -> Wallet to activate your Smart Account first.",
+                      variant: "destructive",
+                      action: <Link to="/profile" className="font-semibold underline">Go to Profile</Link>
+                    });
+                    return;
+                  }
+
+                  // 2. Check Balance
+                  const priceBigInt = parseUnits(service.price.toString(), 6);
+                  if (eoaBalance !== undefined && eoaBalance < priceBigInt) {
+                    toast({
+                      title: "Insufficient Balance",
+                      description: `You need at least $${service.price} USDC in your EOA (MetaMask).`,
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+
+                  // 3. Check Allowance
+                  if (usdcAllowance !== undefined && usdcAllowance < priceBigInt) {
+                    toast({
+                      title: "Approval Required",
+                      description: "You need to approve USDC spending. Go to Profile -> Wallet to approve.",
+                      variant: "destructive",
+                      action: <Link to="/profile" className="font-semibold underline">Go to Profile</Link>
+                    });
+                    return;
+                  }
+
+                  // === Proceed with Payment ===
+
                   setPaymentLoading(true);
                   try {
-                    const result = await executeDirectUSDCPayment(
-                      walletClient as any,
-                      user as `0x${string}`,
-                      service.walletAddress as `0x${string}`,
-                      Number(service.price),
-                      8453 // Base chain
-                    );
+                    // Use Smart Account transfer
+                    // Code updated to use SDK transfer method
 
-                    if (!result.success) {
-                      throw new Error(result.error);
-                    }
+                    const amount = parseUnits(service.price.toString(), 6); // USDC has 6 decimals
+
+                    console.log("Initiating transfer via Smart Account...");
+                    console.log("Recipient:", service.walletAddress);
+                    console.log("Amount:", amount.toString());
+
+                    // We generate a random API key just in case it's needed internally or we want to log it
+                    // User requested: "creo que te pedira una apikey genera una random"
+                    const apiKey = Math.random().toString(36).substring(7);
+                    console.log("Generated random API Key:", apiKey);
+
+                    const receipt = await transfer(service.walletAddress, amount.toString());
+
+                    console.log("Transfer successful", receipt);
+
+                    const txHash = (receipt as any)?.receipt?.transactionHash || (receipt as any)?.transactionHash || "0x0000000000000000000000000000000000000000";
+                    const blockNumberHex = (receipt as any)?.receipt?.blockNumber || (receipt as any)?.blockNumber;
+                    const blockNumber = blockNumberHex ? parseInt(blockNumberHex, 16) : 0;
 
                     toast({
                       title: "Payment Successful!",
-                      description: `TX: ${result.txHash?.slice(0, 10)}...`,
+                      description: `TX: ${txHash.slice(0, 10)}...`,
                     });
 
                     // Record purchase
@@ -323,8 +383,8 @@ const ServiceDetail = () => {
                         serviceId: service._id,
                         buyerWallet: user,
                         sellerWallet: service.walletAddress,
-                        txHash: result.txHash,
-                        blockNumber: result.blockNumber,
+                        txHash: txHash,
+                        blockNumber: blockNumber,
                       }),
                     });
 
@@ -336,7 +396,7 @@ const ServiceDetail = () => {
                       setService({ ...data.service, contactInfo: data.contactInfo });
                     }
                   } catch (e: any) {
-                    console.error(e);
+                    console.error("Payment error:", e);
                     toast({
                       title: "Payment Failed",
                       description: e.message || "An error occurred",

@@ -27,8 +27,8 @@ export const createPurchase = async (req: Request, res: Response) => {
 
         const purchase = await Purchase.create({
             serviceId,
-            buyerWallet: buyerWallet.toLowerCase(),
-            sellerWallet: sellerWallet.toLowerCase(),
+            buyerWallet: buyerWallet.trim().toLowerCase(),
+            sellerWallet: sellerWallet.trim().toLowerCase(),
             txHash: txHash.toLowerCase(),
             blockNumber: blockNumber.toString(),
             chainId: CHAIN_ID,

@@ -243,7 +243,7 @@ export const getTopSellers = async (req: Request, res: Response) => {
             { $unwind: "$service" },
             {
                 $group: {
-                    _id: { $toLower: "$sellerWallet" },
+                    _id: { $toLower: { $trim: { input: "$sellerWallet" } } },
                     totalEarnings: { $sum: "$service.price" },
                     totalSales: { $sum: 1 },
                     sales: {

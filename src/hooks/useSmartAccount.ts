@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AccountAbstraction, BASE_MAINNET } from '@1llet.xyz/erc4337-gasless-sdk';
+import { decodeEntryPointError } from '@/utils/errorDecoder';
 import { useWalletClient } from 'wagmi';
 import { erc20Abi, encodeFunctionData } from 'viem';
 import { base } from 'viem/chains';
@@ -47,6 +48,7 @@ export const useSmartAccount = () => {
         if (!walletClient) return;
 
         try {
+            console.log("Initializing SDK with config:", BASE_MAINNET);
             const sdk = new AccountAbstraction(BASE_MAINNET as any);
 
             // Connect using Wagmi walletClient (supports all connectors: MetaMask, Coinbase, WC, etc.)
@@ -170,7 +172,6 @@ export const useSmartAccount = () => {
         if (!aa) throw new Error("Smart Account not initialized");
         try {
             setLoading(true);
-
             console.log("Executing Gasless Batch Payment...");
 
             const txs = transactions.map(tx => {
@@ -181,18 +182,22 @@ export const useSmartAccount = () => {
                     args: [ownerAddress as `0x${string}`, tx.recipient as `0x${string}`, amountBigInt]
                 });
                 return {
-                    target: USDC_ADDRESS,
+                    target: USDC_ADDRESS as `0x${string}`,
                     data: data,
                     value: 0n
                 };
             });
 
-            // @ts-ignore - Assuming sendBatchTransaction exists based on grep
             const receipt = await aa.sendBatchTransaction(txs);
 
             return receipt;
-        } catch (error) {
+        } catch (error: any) {
             console.error("Batch Transfer failed:", error);
+            const decoded = decodeEntryPointError(error);
+            if (decoded) {
+                console.error("DECODED ERROR:", decoded);
+                throw new Error(decoded);
+            }
             throw error;
         } finally {
             setLoading(false);

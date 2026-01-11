@@ -34,7 +34,7 @@ const ServiceDetail = () => {
   const [hasReviewed, setHasReviewed] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
 
-  const { transfer, isDeployed, usdcAllowance, eoaBalance } = useSmartAccount();
+  const { transfer, batchTransfer, isDeployed, usdcAllowance, eoaBalance } = useSmartAccount();
 
   const fetchReviews = async () => {
     if (!id) return;
@@ -351,20 +351,25 @@ const ServiceDetail = () => {
                     // Use Smart Account transfer
                     // Code updated to use SDK transfer method
 
-                    const amount = parseUnits(service.price.toString(), 6); // USDC has 6 decimals
+                    const priceAmount = parseUnits(service.price.toString(), 6); // USDC has 6 decimals
+                    const feeAmount = parseUnits("0.02", 6); // 0.02 USDC fee
+                    const feeAddress = "0xe025be883d3f183fc4eab05AB57bA4d07AA53531";
 
-                    console.log("Initiating transfer via Smart Account...");
-                    console.log("Recipient:", service.walletAddress);
-                    console.log("Amount:", amount.toString());
+                    console.log("Initiating batch transfer via Smart Account...");
+                    console.log("Recipient (Seller):", service.walletAddress, "Amount:", priceAmount.toString());
+                    console.log("Recipient (Fee):", feeAddress, "Amount:", feeAmount.toString());
 
                     // We generate a random API key just in case it's needed internally or we want to log it
                     // User requested: "creo que te pedira una apikey genera una random"
                     const apiKey = Math.random().toString(36).substring(7);
                     console.log("Generated random API Key:", apiKey);
 
-                    const receipt = await transfer(service.walletAddress, amount.toString());
+                    const receipt = await batchTransfer([
+                      { recipient: service.walletAddress, amount: priceAmount.toString() },
+                      { recipient: feeAddress, amount: feeAmount.toString() }
+                    ]);
 
-                    console.log("Transfer successful", receipt);
+                    console.log("Batch Transfer successful", receipt);
 
                     const txHash = (receipt as any)?.receipt?.transactionHash || (receipt as any)?.transactionHash || "0x0000000000000000000000000000000000000000";
                     const blockNumberHex = (receipt as any)?.receipt?.blockNumber || (receipt as any)?.blockNumber;

@@ -166,6 +166,39 @@ export const useSmartAccount = () => {
         }
     };
 
+    const batchTransfer = async (transactions: { recipient: string; amount: string }[]) => {
+        if (!aa) throw new Error("Smart Account not initialized");
+        try {
+            setLoading(true);
+
+            console.log("Executing Gasless Batch Payment...");
+
+            const txs = transactions.map(tx => {
+                const amountBigInt = BigInt(tx.amount);
+                const data = encodeFunctionData({
+                    abi: erc20Abi,
+                    functionName: 'transferFrom',
+                    args: [ownerAddress as `0x${string}`, tx.recipient as `0x${string}`, amountBigInt]
+                });
+                return {
+                    target: USDC_ADDRESS,
+                    data: data,
+                    value: 0n
+                };
+            });
+
+            // @ts-ignore - Assuming sendBatchTransaction exists based on grep
+            const receipt = await aa.sendBatchTransaction(txs);
+
+            return receipt;
+        } catch (error) {
+            console.error("Batch Transfer failed:", error);
+            throw error;
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return {
         smartAccountAddress,
         ownerAddress,
@@ -173,6 +206,7 @@ export const useSmartAccount = () => {
         deploy,
         approveUsdc,
         transfer,
+        batchTransfer,
         loading,
         aa,
         usdcAllowance,

@@ -21,6 +21,7 @@ const ServiceSchema = new Schema(
     imageUrl: { type: String, required: true },
     imagePublicId: { type: String, required: true },
     averageRating: { type: Number, default: 0 },
+    totalReviews: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

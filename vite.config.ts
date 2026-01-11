@@ -12,6 +12,13 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
     historyApiFallback: true,
+    proxy: {
+      "/api/openmid": {
+        target: "https://facilitator.openmid.xyz",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/openmid/, ""),
+      },
+    },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(
     Boolean
@@ -20,5 +27,9 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  define: {
+    "process.env": {},
+    global: "window",
   },
 }));

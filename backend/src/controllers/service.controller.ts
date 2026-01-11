@@ -28,9 +28,11 @@ export const createService = async (
       deliveryTime,
       revisions,
       description,
-      walletAddress,
+      walletAddress: rawWalletAddress,
       includes: includesJson,
     } = req.body;
+
+    const walletAddress = rawWalletAddress ? rawWalletAddress.toLowerCase() : "";
 
     if (!walletAddress || !isEvmAddress(walletAddress)) {
       return res.status(400).json({
@@ -182,8 +184,19 @@ export const getServices = async (req: Request, res: Response) => {
       {
         $lookup: {
           from: "profiles",
-          localField: "walletAddress",
-          foreignField: "walletAddress",
+          let: { sellerWallet: "$walletAddress" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: [
+                    { $toLower: "$walletAddress" },
+                    { $toLower: "$$sellerWallet" }
+                  ]
+                }
+              }
+            }
+          ],
           as: "profile",
         },
       },
@@ -221,6 +234,8 @@ export const getServiceById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { buyer } = req.query; // Check if a buyer is viewing this
+    console.log(`=== GET SERVICE BY ID: ${id} ===`);
+    console.log("Buyer param:", buyer);
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid Service ID" });
@@ -235,8 +250,19 @@ export const getServiceById = async (req: Request, res: Response) => {
       {
         $lookup: {
           from: "profiles",
-          localField: "walletAddress",
-          foreignField: "walletAddress",
+          let: { sellerWallet: "$walletAddress" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: [
+                    { $toLower: "$walletAddress" },
+                    { $toLower: "$$sellerWallet" }
+                  ]
+                }
+              }
+            }
+          ],
           as: "profile",
         },
       },
@@ -257,10 +283,14 @@ export const getServiceById = async (req: Request, res: Response) => {
 
     // Check if purchased
     if (buyer) {
+      const buyerLower = (buyer as string).toLowerCase();
+      console.log("Checking purchase for buyer:", buyerLower);
       const purchase = await Purchase.findOne({
         serviceId: id,
-        buyerWallet: (buyer as string).toLowerCase(),
+        buyerWallet: buyerLower,
       });
+
+      console.log("Purchase found:", purchase);
 
       if (purchase) {
         // Unlock contact info

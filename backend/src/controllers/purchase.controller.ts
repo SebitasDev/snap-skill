@@ -7,21 +7,26 @@ const CHAIN_ID = 8453; // Base mainnet
 // Create a new purchase record
 export const createPurchase = async (req: Request, res: Response) => {
     try {
+        console.log("=== CREATE PURCHASE REQUEST ===");
+        console.log("Body:", req.body);
         const { serviceId, buyerWallet, sellerWallet, txHash, blockNumber } = req.body;
 
         if (!serviceId || !buyerWallet || !sellerWallet || !txHash || blockNumber === undefined) {
+            console.log("Missing required fields");
             return res.status(400).json({ message: "Missing required fields" });
         }
 
         // Verify service exists (optional but good practice)
         const service = await Service.findById(serviceId);
         if (!service) {
+            console.log("Service not found:", serviceId);
             return res.status(404).json({ message: "Service not found" });
         }
 
         // Check if duplicate (optional, txHash should be unique via db index)
         const existing = await Purchase.findOne({ txHash });
         if (existing) {
+            console.log("Transaction already recorded:", txHash);
             return res.status(409).json({ message: "Transaction already recorded" });
         }
 
@@ -33,6 +38,8 @@ export const createPurchase = async (req: Request, res: Response) => {
             blockNumber: blockNumber.toString(),
             chainId: CHAIN_ID,
         });
+
+        console.log("Purchase created successfully:", purchase);
 
         return res.status(201).json({
             message: "Purchase recorded successfully",

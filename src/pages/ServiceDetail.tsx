@@ -383,7 +383,8 @@ const ServiceDetail = () => {
                     });
 
                     // Record purchase
-                    await fetch(`${API_BASE_URL}/api/purchases`, {
+                    console.log("Recording purchase in DB...");
+                    const purchaseRes = await fetch(`${API_BASE_URL}/api/purchases`, {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
@@ -394,6 +395,13 @@ const ServiceDetail = () => {
                         blockNumber: blockNumber,
                       }),
                     });
+
+                    if (!purchaseRes.ok) {
+                      const errorData = await purchaseRes.json().catch(() => ({}));
+                      console.error("Failed to record purchase:", purchaseRes.status, errorData);
+                      throw new Error(errorData.message || "Failed to record purchase in database");
+                    }
+                    console.log("Purchase recorded successfully");
 
                     // Small delay to allow DB propagation
                     await new Promise(resolve => setTimeout(resolve, 1000));

@@ -45,7 +45,7 @@ const ServiceDetail = () => {
         setReviews(data.reviews);
         // Check if current user has reviewed
         if (user) {
-          const userReview = data.reviews.find((r: any) => r.reviewerWallet === user);
+          const userReview = data.reviews.find((r: any) => r.reviewerWallet.toLowerCase() === user.toLowerCase());
           setHasReviewed(!!userReview);
         }
       }
@@ -142,7 +142,9 @@ const ServiceDetail = () => {
                     )}
                   </div>
                   <div>
-                    <p className="font-bold text-lg">{service.profile?.name || service.walletAddress}</p>
+                    <p className="font-bold text-lg">
+                      {service.profile?.name || `${service.walletAddress.slice(0, 6)}...${service.walletAddress.slice(-4)}`}
+                    </p>
                     <p className="text-base text-muted-foreground">
                       Seller
                     </p>
@@ -201,7 +203,7 @@ const ServiceDetail = () => {
                         // Optionally refresh service to get new avg rating
                         const fetchService = async () => {
                           try {
-                            const query = user ? `?buyer=${user}` : "";
+                            const query = user ? `?buyer=${user.toLowerCase()}` : "";
                             const res = await fetch(`${API_BASE_URL}/api/services/${id}${query}`);
                             const data = await res.json();
                             if (data.service) {
@@ -386,15 +388,18 @@ const ServiceDetail = () => {
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
                         serviceId: service._id,
-                        buyerWallet: user,
-                        sellerWallet: service.walletAddress,
+                        buyerWallet: user.toLowerCase(),
+                        sellerWallet: service.walletAddress.toLowerCase(),
                         txHash: txHash,
                         blockNumber: blockNumber,
                       }),
                     });
 
+                    // Small delay to allow DB propagation
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+
                     // Refresh service to show contact info
-                    const query = user ? `?buyer=${user}` : "";
+                    const query = user ? `?buyer=${user.toLowerCase()}` : "";
                     const res = await fetch(`${API_BASE_URL}/api/services/${id}${query}`);
                     const data = await res.json();
                     if (data.service) {

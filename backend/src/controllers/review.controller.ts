@@ -237,8 +237,16 @@ export const getReviewsByRelationship = async (req: Request, res: Response) => {
     const reviews = await Review.aggregate([
       {
         $match: {
-          reviewerWallet: buyerWallet.toLowerCase(),
-          sellerWallet: sellerWallet.toLowerCase(),
+          $or: [
+            {
+              reviewerWallet: buyerWallet.toLowerCase(),
+              sellerWallet: sellerWallet.toLowerCase(),
+            },
+            {
+              reviewerWallet: sellerWallet.toLowerCase(),
+              sellerWallet: buyerWallet.toLowerCase(),
+            }
+          ],
           chainId: CHAIN_ID,
         },
       },
@@ -287,7 +295,7 @@ export const checkReviewStatus = async (req: Request, res: Response) => {
       chainId: CHAIN_ID,
     });
 
-    return res.status(200).json({ reviewed: !!review });
+    return res.status(200).json({ reviewed: !!review, review });
   } catch (error) {
     console.error("Error checking review status:", error);
     return res.status(500).json({ message: "Server error", error });

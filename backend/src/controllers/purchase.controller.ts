@@ -58,7 +58,7 @@ export const checkPurchaseStatus = async (req: Request, res: Response) => {
 
         const purchase = await Purchase.findOne({
             serviceId,
-            buyerWallet: buyerWallet.toLowerCase()
+            buyerWallet: { $regex: new RegExp(`^${buyerWallet}$`, "i") }
         });
 
         return res.status(200).json({

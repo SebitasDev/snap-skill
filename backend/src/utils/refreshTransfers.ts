@@ -39,8 +39,8 @@ export async function refreshTransfers(
 
   // 1. Get first on-site purchase to determine relationship start
   const firstPurchase = await Purchase.findOne({
-    buyerWallet: buyerLower,
-    sellerWallet: sellerLower,
+    buyerWallet: { $regex: new RegExp(`^${buyer}$`, "i") },
+    sellerWallet: { $regex: new RegExp(`^${seller}$`, "i") },
   }).sort({ blockNumber: 1 });
 
   if (!firstPurchase) {
@@ -50,15 +50,15 @@ export async function refreshTransfers(
 
   // 2. Get all on-site purchase txHashes to exclude
   const onSiteTxHashes = await Purchase.find({
-    buyerWallet: buyerLower,
-    sellerWallet: sellerLower,
+    buyerWallet: { $regex: new RegExp(`^${buyer}$`, "i") },
+    sellerWallet: { $regex: new RegExp(`^${seller}$`, "i") },
   }).distinct("txHash");
   const excludeSet = new Set(onSiteTxHashes.map((h: string) => h.toLowerCase()));
 
   // 3. Get cursor (or start from first purchase block)
   const relationship = await WalletRelationship.findOne({
-    buyerWallet: buyerLower,
-    sellerWallet: sellerLower,
+    buyerWallet: { $regex: new RegExp(`^${buyer}$`, "i") },
+    sellerWallet: { $regex: new RegExp(`^${seller}$`, "i") },
     chainId: CHAIN_ID,
   });
 
@@ -74,7 +74,7 @@ export async function refreshTransfers(
   } catch (err) {
     console.error("Failed to fetch latest block:", err);
     return {
-      transfers: await getCachedTransfers(buyerLower, sellerLower),
+      transfers: await getCachedTransfers(buyer, seller),
       hasMore: true,
       error: "Failed to fetch latest block",
     };
@@ -93,7 +93,7 @@ export async function refreshTransfers(
   if (fromBlock > toBlock) {
     // Already up to date
     return {
-      transfers: await getCachedTransfers(buyerLower, sellerLower),
+      transfers: await getCachedTransfers(buyer, seller),
       hasMore: false,
     };
   }
@@ -113,7 +113,7 @@ export async function refreshTransfers(
   } catch (err) {
     console.error("Failed to fetch logs:", err);
     return {
-      transfers: await getCachedTransfers(buyerLower, sellerLower),
+      transfers: await getCachedTransfers(buyer, seller),
       hasMore: true,
       error: "Failed to fetch latest payments",
     };
@@ -169,14 +169,36 @@ export async function refreshTransfers(
   }
 
   // 10. Update cursor
-  await WalletRelationship.updateOne(
-    { buyerWallet: buyerLower, sellerWallet: sellerLower, chainId: CHAIN_ID },
-    { $set: { lastProcessedBlock: toBlock.toString() } },
-    { upsert: true }
-  );
+  // IMPORTANT: We use updateOne with filter on regex to find EXISTING record even if case differs
+  // But if it doesn't exist, we want to create one.
+  // Using findOneAndUpdate is safer to handle "find existing mixed case OR create new lowercase" logic,
+  // but updateOne with upsert and regex in filter is tricky because if it upserts, it might try to use the regex in the key?
+  // No, Mongo upsert with regex in query usually fails or creates weird keys if not all fields are in update.
+  // Better approach: find first, then save, or updateOne with strict query if we want to enforce normalization.
+  // Actually, for writing new progress, we SHOULD assume we want to write to the normalized version (buyerLower).
+  // But if a previous record exists with MixedCase, we want to update THAT one instead of creating a duplicate.
+  // So: Find by regex. If exists, update ID. If not, create new with defaults.
+
+  const existingRel = await WalletRelationship.findOne({
+    buyerWallet: { $regex: new RegExp(`^${buyer}$`, "i") },
+    sellerWallet: { $regex: new RegExp(`^${seller}$`, "i") },
+    chainId: CHAIN_ID,
+  });
+
+  if (existingRel) {
+    existingRel.lastProcessedBlock = toBlock.toString();
+    await existingRel.save();
+  } else {
+    await WalletRelationship.create({
+      buyerWallet: buyerLower, // Normalize new records
+      sellerWallet: sellerLower,
+      chainId: CHAIN_ID,
+      lastProcessedBlock: toBlock.toString()
+    });
+  }
 
   return {
-    transfers: await getCachedTransfers(buyerLower, sellerLower),
+    transfers: await getCachedTransfers(buyer, seller),
     hasMore,
   };
 }
@@ -186,15 +208,15 @@ async function getCachedTransfers(
   seller: string
 ): Promise<TransferResult[]> {
   const transfers = await Transfer.find({
-    buyerWallet: buyer,
-    sellerWallet: seller,
+    buyerWallet: { $regex: new RegExp(`^${buyer}$`, "i") },
+    sellerWallet: { $regex: new RegExp(`^${seller}$`, "i") },
     chainId: CHAIN_ID,
   }).sort({ blockNumber: -1 });
 
   // Get reviewed txHashes (O(1) lookup)
   const reviewedTxHashes = await Review.find({
-    reviewerWallet: buyer,
-    sellerWallet: seller,
+    reviewerWallet: { $regex: new RegExp(`^${buyer}$`, "i") },
+    sellerWallet: { $regex: new RegExp(`^${seller}$`, "i") },
     chainId: CHAIN_ID,
   }).distinct("txHash");
   const reviewedSet = new Set(reviewedTxHashes.map((h: string) => h.toLowerCase()));
@@ -213,13 +235,10 @@ export async function getCachedTransfersForRelationship(
   buyer: string,
   seller: string
 ): Promise<RefreshResult> {
-  const buyerLower = buyer.toLowerCase();
-  const sellerLower = seller.toLowerCase();
-
   // Check if relationship exists
   const firstPurchase = await Purchase.findOne({
-    buyerWallet: buyerLower,
-    sellerWallet: sellerLower,
+    buyerWallet: { $regex: new RegExp(`^${buyer}$`, "i") },
+    sellerWallet: { $regex: new RegExp(`^${seller}$`, "i") },
   });
 
   if (!firstPurchase) {
@@ -228,8 +247,8 @@ export async function getCachedTransfersForRelationship(
 
   // Check if we need to scan more
   const relationship = await WalletRelationship.findOne({
-    buyerWallet: buyerLower,
-    sellerWallet: sellerLower,
+    buyerWallet: { $regex: new RegExp(`^${buyer}$`, "i") },
+    sellerWallet: { $regex: new RegExp(`^${seller}$`, "i") },
     chainId: CHAIN_ID,
   });
 
@@ -247,7 +266,7 @@ export async function getCachedTransfersForRelationship(
   }
 
   return {
-    transfers: await getCachedTransfers(buyerLower, sellerLower),
+    transfers: await getCachedTransfers(buyer, seller),
     hasMore,
   };
 }

@@ -120,12 +120,12 @@ export const getProfile = async (req: Request, res: Response) => {
 
 export const getProfileStats = async (req: Request, res: Response) => {
     try {
-        const { walletAddress: rawWalletAddress } = req.params;
-        const walletAddress = rawWalletAddress.toLowerCase();
+        const { walletAddress } = req.params;
+        const walletRegex = { $regex: new RegExp(`^${walletAddress}$`, "i") };
 
         // 1. Calculate Total Earnings & Sales by Category & Unique Clients
         // Find purchases where this user is the seller
-        const purchases = await Purchase.find({ sellerWallet: walletAddress });
+        const purchases = await Purchase.find({ sellerWallet: walletRegex });
 
         let totalEarnings = 0;
         const serviceSalesCount: Record<string, number> = {};
@@ -134,7 +134,7 @@ export const getProfileStats = async (req: Request, res: Response) => {
 
         // To get price and category, we need to look up the services
         const sales = await Purchase.aggregate([
-            { $match: { sellerWallet: walletAddress } },
+            { $match: { sellerWallet: { $regex: new RegExp(`^${walletAddress}$`, "i") } } },
             {
                 $lookup: {
                     from: "services",

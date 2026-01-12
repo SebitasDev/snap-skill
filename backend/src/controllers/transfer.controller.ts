@@ -5,6 +5,26 @@ import {
 } from "../utils/refreshTransfers";
 import { Purchase } from "../models/purchase.model";
 
+// Helper to merge and sort transfers
+const mergeTransfers = (result1: any, result2: any) => {
+  // Merge transfers, deduplicating by txHash
+  const seen = new Set();
+  const allTransfers = [...(result1.transfers || []), ...(result2.transfers || [])].filter(t => {
+    const isDuplicate = seen.has(t.txHash.toLowerCase());
+    seen.add(t.txHash.toLowerCase());
+    return !isDuplicate;
+  });
+
+  // Sort by block number descending (newest first)
+  allTransfers.sort((a, b) => Number(b.blockNumber) - Number(a.blockNumber));
+
+  return {
+    transfers: allTransfers,
+    hasMore: result1.hasMore || result2.hasMore,
+    error: result1.error || result2.error
+  };
+};
+
 // Get cached transfers for a buyer-seller relationship (instant)
 export const getTransfers = async (req: Request, res: Response) => {
   try {
@@ -14,10 +34,13 @@ export const getTransfers = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Missing wallet addresses" });
     }
 
-    const result = await getCachedTransfersForRelationship(
-      buyerWallet.toLowerCase(),
-      sellerWallet.toLowerCase()
-    );
+    // Fetch bidirectional: Me->Them AND Them->Me
+    const [forward, reverse] = await Promise.all([
+      getCachedTransfersForRelationship(buyerWallet, sellerWallet),
+      getCachedTransfersForRelationship(sellerWallet, buyerWallet)
+    ]);
+
+    const result = mergeTransfers(forward, reverse);
 
     return res.status(200).json(result);
   } catch (error) {
@@ -35,7 +58,13 @@ export const refreshTransfersEndpoint = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Missing wallet addresses" });
     }
 
-    const result = await refreshTransfers(buyerWallet.toLowerCase(), sellerWallet.toLowerCase());
+    // Refresh bidirectional
+    const [forward, reverse] = await Promise.all([
+      refreshTransfers(buyerWallet, sellerWallet),
+      refreshTransfers(sellerWallet, buyerWallet)
+    ]);
+
+    const result = mergeTransfers(forward, reverse);
 
     if (result.error) {
       return res.status(200).json({

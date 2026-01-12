@@ -24,6 +24,7 @@ interface TransferItem {
   blockNumber: string;
   timestamp: string;
   reviewed: boolean;
+  buyerWallet: string;
 }
 
 interface PurchaseItem {
@@ -381,37 +382,65 @@ const Relationship = () => {
             </Card>
           ) : (
             <div className="space-y-3">
-              {transfers.map((transfer) => (
-                <Card key={transfer.txHash}>
-                  <CardContent className="flex items-center justify-between p-4">
-                    <div>
-                      <p className="font-medium">{formatAmount(transfer.amount)}</p>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        <span>{formatDate(transfer.timestamp)}</span>
-                        <span>•</span>
-                        <span className="font-mono text-xs">
-                          {transfer.txHash.slice(0, 10)}...
-                        </span>
+              {transfers.map((transfer) => {
+                const isSent = transfer.buyerWallet?.toLowerCase() === user.toLowerCase();
+                const review = reviews.find(r => r.txHash.toLowerCase() === transfer.txHash.toLowerCase());
+
+                return (
+                  <Card key={transfer.txHash}>
+                    <CardContent className="flex items-center justify-between p-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className={`font-medium ${isSent ? 'text-red-500' : 'text-green-500'}`}>
+                            {isSent ? "-" : "+"}{formatAmount(transfer.amount)}
+                          </p>
+                          <Badge variant="outline" className="text-xs">
+                            {isSent ? "Sent" : "Received"}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                          <Clock className="h-3 w-3" />
+                          <span>{formatDate(transfer.timestamp)}</span>
+                          <span>•</span>
+                          <span className="font-mono text-xs">
+                            {transfer.txHash.slice(0, 10)}...
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                    <div>
-                      {transfer.reviewed ? (
-                        <Badge variant="secondary" className="gap-1">
-                          <CheckCircle2 className="h-3 w-3" />
-                          Reviewed
-                        </Badge>
-                      ) : (
-                        <TransferReviewButton
-                          txHash={transfer.txHash}
-                          reviewerWallet={user}
-                          onReviewSubmitted={fetchData}
-                        />
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      <div>
+                        {review ? (
+                          <div className="text-right">
+                            <div className="flex justify-end gap-1 mb-1">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  className={`h-3 w-3 ${i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+                                    }`}
+                                />
+                              ))}
+                            </div>
+                            <p className="text-xs text-muted-foreground max-w-[200px] truncate">
+                              {isSent ? "You: " : "They: "}{review.comment}
+                            </p>
+                          </div>
+                        ) : (
+                          isSent ? (
+                            <TransferReviewButton
+                              txHash={transfer.txHash}
+                              reviewerWallet={user}
+                              onReviewSubmitted={fetchData}
+                            />
+                          ) : (
+                            <span className="text-xs text-muted-foreground italic">
+                              Received
+                            </span>
+                          )
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>
@@ -433,11 +462,10 @@ const Relationship = () => {
                         {[...Array(5)].map((_, i) => (
                           <Star
                             key={i}
-                            className={`h-4 w-4 ${
-                              i < review.rating
-                                ? "fill-yellow-400 text-yellow-400"
-                                : "text-gray-300"
-                            }`}
+                            className={`h-4 w-4 ${i < review.rating
+                              ? "fill-yellow-400 text-yellow-400"
+                              : "text-gray-300"
+                              }`}
                           />
                         ))}
                       </div>
@@ -551,11 +579,10 @@ const TransferReviewButton = ({
                   onClick={() => setRating(star)}
                 >
                   <Star
-                    className={`h-8 w-8 ${
-                      star <= (hoverRating || rating)
-                        ? "fill-yellow-400 text-yellow-400"
-                        : "text-gray-300"
-                    }`}
+                    className={`h-8 w-8 ${star <= (hoverRating || rating)
+                      ? "fill-yellow-400 text-yellow-400"
+                      : "text-gray-300"
+                      }`}
                   />
                 </button>
               ))}

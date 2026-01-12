@@ -8,8 +8,8 @@ import { WalletRelationship } from "../models/walletRelationship.model";
 const USDC_ADDRESS = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const;
 const CHAIN_ID = 8453; // Base mainnet
 const MIN_CONFIRMATIONS = 12n;
-const MIN_USDC = parseUnits("10", 6); // $10 minimum
-const MAX_BLOCK_RANGE = 100_000n; // ~2 days on Base, prevents huge scans
+const MIN_USDC = parseUnits("0", 6); // No minimum, show all transfers
+const MAX_BLOCK_RANGE = 10_000n; // Increase chunk size for faster sync (2k was too slow)
 
 const client = createPublicClient({
   chain: base,
@@ -22,6 +22,7 @@ interface TransferResult {
   blockNumber: string;
   timestamp: Date;
   reviewed: boolean;
+  buyerWallet: string; // Add this
 }
 
 interface RefreshResult {
@@ -37,11 +38,19 @@ export async function refreshTransfers(
   const buyerLower = buyer.toLowerCase() as Address;
   const sellerLower = seller.toLowerCase();
 
-  // 1. Get first on-site purchase to determine relationship start
+  // 1. Get first on-site purchase (in either direction) to determine relationship start
   const firstPurchase = await Purchase.findOne({
-    buyerWallet: { $regex: new RegExp(`^${buyer}$`, "i") },
-    sellerWallet: { $regex: new RegExp(`^${seller}$`, "i") },
-  }).sort({ blockNumber: 1 });
+    $or: [
+      {
+        buyerWallet: { $regex: new RegExp(`^${buyer}$`, "i") },
+        sellerWallet: { $regex: new RegExp(`^${seller}$`, "i") },
+      },
+      {
+        buyerWallet: { $regex: new RegExp(`^${seller}$`, "i") },
+        sellerWallet: { $regex: new RegExp(`^${buyer}$`, "i") },
+      }
+    ]
+  }).sort({ createdAt: 1 }); // Sort by time, not block string
 
   if (!firstPurchase) {
     // No on-site purchase = no relationship = nothing to scan
@@ -62,7 +71,33 @@ export async function refreshTransfers(
     chainId: CHAIN_ID,
   });
 
-  const relationshipStartBlock = BigInt(firstPurchase.blockNumber);
+  let paramsStartBlock = 0n;
+  if (firstPurchase.blockNumber) {
+    paramsStartBlock = BigInt(firstPurchase.blockNumber);
+  } else {
+    // Auto-heal: Fetch block number from chain if missing AND if it's a valid hash
+    if (firstPurchase.txHash.startsWith("0x") && firstPurchase.txHash.length === 66) {
+      try {
+        console.log(`Recovering block number for tx: ${firstPurchase.txHash}`);
+        const tx = await client.getTransaction({ hash: firstPurchase.txHash as `0x${string}` });
+        if (tx && tx.blockNumber) {
+          paramsStartBlock = tx.blockNumber;
+          // Update DB asynchronously
+          await Purchase.updateOne({ _id: firstPurchase._id }, { blockNumber: paramsStartBlock.toString() });
+          console.log(`Recovered and saved block ${paramsStartBlock} for purchase ${firstPurchase._id}`);
+        } else {
+          console.error("Could not fetch tx from chain, defaulting to 0");
+        }
+      } catch (err) {
+        console.error("Error healing block number:", err);
+      }
+    } else {
+      console.warn(`Skipping block recovery for invalid/manual txHash: ${firstPurchase.txHash}, defaulting to 0`);
+      paramsStartBlock = 0n;
+    }
+  }
+
+  const relationshipStartBlock = paramsStartBlock;
   const lastProcessedBlock = relationship?.lastProcessedBlock
     ? BigInt(relationship.lastProcessedBlock)
     : relationshipStartBlock - 1n;
@@ -80,104 +115,131 @@ export async function refreshTransfers(
     };
   }
 
-  // 5. Calculate scan range (capped, confirmed only)
   const maxConfirmedBlock = latestBlock - MIN_CONFIRMATIONS;
-  const fromBlock = lastProcessedBlock + 1n;
-  const toBlock =
-    fromBlock + MAX_BLOCK_RANGE < maxConfirmedBlock
-      ? fromBlock + MAX_BLOCK_RANGE
-      : maxConfirmedBlock;
 
-  const hasMore = toBlock < maxConfirmedBlock;
+  // OPTIMIZATION: User only cares about recent history (last ~4-5 months)
+  // 6 months * 30 days * 24 hours * 1800 blocks/hour (~2s block time) = ~7.7M blocks
+  // Let's use 6,000,000 blocks (~4.5 months) as a safe lookback window.
+  const MAX_LOOKBACK_BLOCKS = 6_000_000n;
+  const minAllowedBlock = maxConfirmedBlock - MAX_LOOKBACK_BLOCKS;
 
-  if (fromBlock > toBlock) {
-    // Already up to date
-    return {
-      transfers: await getCachedTransfers(buyer, seller),
-      hasMore: false,
-    };
+  let currentFromBlock = lastProcessedBlock + 1n;
+
+  // Clamp start block if it's too old (e.g. defaulting to 0 or 2001)
+  if (currentFromBlock < minAllowedBlock) {
+    console.log(`Clamping scan start from ${currentFromBlock} to ${minAllowedBlock} (limiting to last ~4.5 months)`);
+    currentFromBlock = minAllowedBlock;
   }
 
-  // 6. Query chain logs (with error handling)
-  let logs;
-  try {
-    logs = await client.getLogs({
-      address: USDC_ADDRESS,
-      event: parseAbiItem(
-        "event Transfer(address indexed from, address indexed to, uint256 value)"
-      ),
-      args: { from: buyerLower, to: sellerLower as Address },
-      fromBlock,
-      toBlock,
-    });
-  } catch (err) {
-    console.error("Failed to fetch logs:", err);
-    return {
-      transfers: await getCachedTransfers(buyer, seller),
-      hasMore: true,
-      error: "Failed to fetch latest payments",
-    };
-  }
+  let hasMore = true;
+  let iterationCount = 0;
+  const MAX_ITERATIONS = 20; // Sync up to 20 chunks (200k blocks) per click
 
-  // 7. Filter: above threshold, not an on-site purchase
-  const newTransfers = logs.filter(
-    (log: { args: { value?: bigint }; blockNumber: bigint | null; transactionHash: string }) =>
-      log.args.value !== undefined &&
-      log.args.value >= MIN_USDC &&
-      log.blockNumber !== null &&
-      !excludeSet.has(log.transactionHash.toLowerCase())
-  );
+  console.log(`Starting sync loop from ${currentFromBlock} to ${maxConfirmedBlock}`);
 
-  // 8. Fetch timestamps for new transfers (batch by unique blocks)
-  const uniqueBlocks = [...new Set(newTransfers.map((t: { blockNumber: bigint | null }) => t.blockNumber!))];
-  const blockTimestamps = new Map<bigint, Date>();
+  while (currentFromBlock < maxConfirmedBlock && iterationCount < MAX_ITERATIONS) {
+    iterationCount++;
 
-  for (const blockNum of uniqueBlocks) {
+    // Calculate current chunk range
+    const toBlock =
+      currentFromBlock + MAX_BLOCK_RANGE < maxConfirmedBlock
+        ? currentFromBlock + MAX_BLOCK_RANGE
+        : maxConfirmedBlock;
+
+    console.log(`Sync iteration ${iterationCount}: ${currentFromBlock} -> ${toBlock}`);
+
+    // Query chain logs
+    let logs;
     try {
-      const block = await client.getBlock({ blockNumber: blockNum as bigint });
-      blockTimestamps.set(blockNum as bigint, new Date(Number(block.timestamp) * 1000));
-    } catch {
-      blockTimestamps.set(blockNum as bigint, new Date()); // fallback
+      // Rate limit mitigation: Add small delay between chunks
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      logs = await client.getLogs({
+        address: USDC_ADDRESS,
+        event: parseAbiItem(
+          "event Transfer(address indexed from, address indexed to, uint256 value)"
+        ),
+        args: { from: buyerLower, to: sellerLower as Address },
+        fromBlock: currentFromBlock,
+        toBlock: toBlock,
+      });
+    } catch (err: any) {
+      // Handle Rate Limit Gracefully
+      if (err?.message?.includes("429") || err?.details?.includes("rate limit") || err?.code === -32016) {
+        console.warn("Rate limit hit (429), saving partial progress and stopping loop.");
+        hasMore = true; // We explicitly have more but stopped early
+        break; // Exit loop, but let the function continue to save progress
+      }
+
+      console.error("Failed to fetch logs:", err);
+      return {
+        transfers: await getCachedTransfers(buyer, seller),
+        hasMore: true,
+        error: "Failed to fetch latest payments (RPC error)",
+      };
+    }
+
+    // Process logs immediately to avoid memory bloat
+    const newTransfers = logs.filter(
+      (log: { args: { value?: bigint }; blockNumber: bigint | null; transactionHash: string }) =>
+        log.args.value !== undefined &&
+        log.args.value >= MIN_USDC &&
+        log.blockNumber !== null &&
+        !excludeSet.has(log.transactionHash.toLowerCase())
+    );
+
+    if (newTransfers.length > 0) {
+      // Fetch timestamps
+      const uniqueBlocks = [...new Set(newTransfers.map((t: { blockNumber: bigint | null }) => t.blockNumber!))];
+      const blockTimestamps = new Map<bigint, Date>();
+
+      for (const blockNum of uniqueBlocks) {
+        try {
+          const block = await client.getBlock({ blockNumber: blockNum as bigint });
+          blockTimestamps.set(blockNum as bigint, new Date(Number(block.timestamp) * 1000));
+        } catch {
+          blockTimestamps.set(blockNum as bigint, new Date());
+        }
+      }
+
+      // Upsert transfers
+      await Transfer.bulkWrite(
+        newTransfers.map((log: { transactionHash: string; args: { value?: bigint }; blockNumber: bigint | null }) => ({
+          updateOne: {
+            filter: {
+              chainId: CHAIN_ID,
+              txHash: log.transactionHash.toLowerCase(),
+            },
+            update: {
+              $setOnInsert: {
+                chainId: CHAIN_ID,
+                txHash: log.transactionHash.toLowerCase(),
+                buyerWallet: buyerLower,
+                sellerWallet: sellerLower,
+                amount: log.args.value!.toString(),
+                blockNumber: log.blockNumber!.toString(),
+                timestamp: blockTimestamps.get(log.blockNumber!) || new Date(),
+                createdAt: new Date(),
+              },
+            },
+            upsert: true,
+          },
+        }))
+      );
+    }
+
+    // Update cursor in variable
+    currentFromBlock = toBlock + 1n;
+
+    // Safety check if we are done
+    if (toBlock >= maxConfirmedBlock) {
+      hasMore = false;
+      break;
     }
   }
 
-  // 9. Bulk upsert new transfers
-  if (newTransfers.length > 0) {
-    await Transfer.bulkWrite(
-      newTransfers.map((log: { transactionHash: string; args: { value?: bigint }; blockNumber: bigint | null }) => ({
-        updateOne: {
-          filter: {
-            chainId: CHAIN_ID,
-            txHash: log.transactionHash.toLowerCase(),
-          },
-          update: {
-            $setOnInsert: {
-              chainId: CHAIN_ID,
-              txHash: log.transactionHash.toLowerCase(),
-              buyerWallet: buyerLower,
-              sellerWallet: sellerLower,
-              amount: log.args.value!.toString(),
-              blockNumber: log.blockNumber!.toString(),
-              timestamp: blockTimestamps.get(log.blockNumber!) || new Date(),
-              createdAt: new Date(),
-            },
-          },
-          upsert: true,
-        },
-      }))
-    );
-  }
-
-  // 10. Update cursor
-  // IMPORTANT: We use updateOne with filter on regex to find EXISTING record even if case differs
-  // But if it doesn't exist, we want to create one.
-  // Using findOneAndUpdate is safer to handle "find existing mixed case OR create new lowercase" logic,
-  // but updateOne with upsert and regex in filter is tricky because if it upserts, it might try to use the regex in the key?
-  // No, Mongo upsert with regex in query usually fails or creates weird keys if not all fields are in update.
-  // Better approach: find first, then save, or updateOne with strict query if we want to enforce normalization.
-  // Actually, for writing new progress, we SHOULD assume we want to write to the normalized version (buyerLower).
-  // But if a previous record exists with MixedCase, we want to update THAT one instead of creating a duplicate.
-  // So: Find by regex. If exists, update ID. If not, create new with defaults.
+  // Update DB with final progress
+  const finalProcessedBlock = currentFromBlock - 1n; // We completed up to (currentFromBlock - 1)
 
   const existingRel = await WalletRelationship.findOne({
     buyerWallet: { $regex: new RegExp(`^${buyer}$`, "i") },
@@ -186,14 +248,14 @@ export async function refreshTransfers(
   });
 
   if (existingRel) {
-    existingRel.lastProcessedBlock = toBlock.toString();
+    existingRel.lastProcessedBlock = finalProcessedBlock.toString();
     await existingRel.save();
   } else {
     await WalletRelationship.create({
-      buyerWallet: buyerLower, // Normalize new records
+      buyerWallet: buyerLower,
       sellerWallet: sellerLower,
       chainId: CHAIN_ID,
-      lastProcessedBlock: toBlock.toString()
+      lastProcessedBlock: finalProcessedBlock.toString()
     });
   }
 
@@ -221,12 +283,13 @@ async function getCachedTransfers(
   }).distinct("txHash");
   const reviewedSet = new Set(reviewedTxHashes.map((h: string) => h.toLowerCase()));
 
-  return transfers.map((t: { txHash: string; amount: string; blockNumber: string; timestamp: Date }) => ({
+  return transfers.map((t: { txHash: string; amount: string; blockNumber: string; timestamp: Date; buyerWallet: string }) => ({
     txHash: t.txHash,
     amount: t.amount,
     blockNumber: t.blockNumber,
     timestamp: t.timestamp,
     reviewed: reviewedSet.has(t.txHash.toLowerCase()),
+    buyerWallet: t.buyerWallet, // Return buyerWallet
   }));
 }
 

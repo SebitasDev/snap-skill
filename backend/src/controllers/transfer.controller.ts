@@ -61,8 +61,8 @@ export const getPurchases = async (req: Request, res: Response) => {
     }
 
     const purchases = await Purchase.find({
-      buyerWallet: buyerWallet.toLowerCase(),
-      sellerWallet: sellerWallet.toLowerCase(),
+      buyerWallet: { $regex: new RegExp(`^${buyerWallet}$`, "i") },
+      sellerWallet: { $regex: new RegExp(`^${sellerWallet}$`, "i") },
     })
       .populate("serviceId", "title imageUrl price")
       .sort({ createdAt: -1 });
@@ -85,7 +85,7 @@ export const getBuyerRelationships = async (req: Request, res: Response) => {
 
     // Get unique sellers from purchases
     const sellerWallets = await Purchase.find({
-      buyerWallet: buyerWallet.toLowerCase(),
+      buyerWallet: { $regex: new RegExp(`^${buyerWallet}$`, "i") },
     }).distinct("sellerWallet");
 
     return res.status(200).json({ sellers: sellerWallets });

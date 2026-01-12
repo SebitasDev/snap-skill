@@ -56,7 +56,10 @@ export const checkPurchaseStatus = async (req: Request, res: Response) => {
     try {
         const { serviceId, buyerWallet } = req.params;
 
-        const purchase = await Purchase.findOne({ serviceId, buyerWallet });
+        const purchase = await Purchase.findOne({
+            serviceId,
+            buyerWallet: buyerWallet.toLowerCase()
+        });
 
         return res.status(200).json({
             hasPurchased: !!purchase,

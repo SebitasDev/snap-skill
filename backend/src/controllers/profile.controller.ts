@@ -120,7 +120,8 @@ export const getProfile = async (req: Request, res: Response) => {
 
 export const getProfileStats = async (req: Request, res: Response) => {
     try {
-        const { walletAddress } = req.params;
+        const { walletAddress: rawWalletAddress } = req.params;
+        const walletAddress = rawWalletAddress.toLowerCase();
 
         // 1. Calculate Total Earnings & Sales by Category & Unique Clients
         // Find purchases where this user is the seller

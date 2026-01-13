@@ -13,6 +13,9 @@ import {
   Clock,
   DollarSign,
   Loader2,
+  Copy,
+  MessageCircle,
+  Send,
 } from "lucide-react";
 import { useWalletAccount } from "@/hooks/useWalletAccount";
 import { useToast } from "@/hooks/use-toast";
@@ -55,6 +58,8 @@ interface SellerProfile {
   name: string;
   imageUrl: string;
   walletAddress: string;
+  whatsapp?: string;
+  telegram?: string;
 }
 
 const Relationship = () => {
@@ -242,7 +247,54 @@ const Relationship = () => {
             <h1 className="text-2xl font-bold">
               {sellerProfile?.name || `${sellerWallet?.slice(0, 6)}...${sellerWallet?.slice(-4)}`}
             </h1>
-            <p className="text-muted-foreground">Your work history together</p>
+
+            {/* Wallet Address & Copy */}
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+              <span className="font-mono">{sellerWallet}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={() => {
+                  if (sellerWallet) {
+                    navigator.clipboard.writeText(sellerWallet);
+                    toast({ description: "Address copied to clipboard" });
+                  }
+                }}
+              >
+                <Copy className="h-3 w-3" />
+              </Button>
+            </div>
+
+            {/* Contact Actions */}
+            <div className="flex items-center gap-2 mt-2">
+              {sellerProfile?.whatsapp && (
+                <Button variant="outline" size="sm" className="h-8 gap-2" asChild>
+                  <a
+                    href={`https://wa.me/${sellerProfile.whatsapp.replace(/\D/g, '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <MessageCircle className="h-4 w-4 text-green-500" />
+                    WhatsApp
+                  </a>
+                </Button>
+              )}
+              {sellerProfile?.telegram && (
+                <Button variant="outline" size="sm" className="h-8 gap-2" asChild>
+                  <a
+                    href={`https://t.me/${sellerProfile.telegram.replace('@', '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Send className="h-4 w-4 text-blue-500" />
+                    Telegram
+                  </a>
+                </Button>
+              )}
+            </div>
+
+            <p className="text-muted-foreground mt-2">Your work history together</p>
           </div>
         </div>
 

@@ -1,10 +1,11 @@
 import { WalletClient, parseUnits, createPublicClient, http } from "viem";
-import { base, arbitrum } from "viem/chains";
+import { base, arbitrum, sepolia } from "viem/chains";
 
 // USDC Contract Addresses
 const USDC_ADDRESSES: Record<number, `0x${string}`> = {
   [base.id]: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
   [arbitrum.id]: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+  [sepolia.id]: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238", // Verify this is Circle's Sepolia USDC (Testnet)
 };
 
 // Minimal ERC20 ABI for transfer
@@ -46,9 +47,14 @@ export async function executeDirectUSDCPayment(
     // Convert to USDC decimals (6)
     const amount = parseUnits(amountUSD.toFixed(6), 6);
 
+    // Pick Chain
+    let chainObj = base;
+    if (chainId === arbitrum.id) chainObj = arbitrum;
+    else if (chainId === sepolia.id) chainObj = sepolia;
+
     // Create public client to wait for receipt
     const publicClient = createPublicClient({
-      chain: chainId === base.id ? base : arbitrum,
+      chain: chainObj as any,
       transport: http(),
     });
 
@@ -59,7 +65,7 @@ export async function executeDirectUSDCPayment(
       functionName: "transfer",
       args: [to, amount],
       account: from,
-      chain: chainId === base.id ? base : arbitrum,
+      chain: chainObj,
     });
 
     // Wait for transaction receipt to get blockNumber

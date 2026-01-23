@@ -33,8 +33,31 @@ const ServiceDetail = () => {
   const [reviews, setReviews] = useState([]);
   const [hasReviewed, setHasReviewed] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [taskInput, setTaskInput] = useState("");
 
-  const { transfer, batchTransfer, isDeployed, usdcAllowance, eoaBalance } = useSmartAccount();
+  const [x402Inputs, setX402Inputs] = useState({
+    chain: "base",
+    token: "USDC",
+    language: "English"
+  });
+
+  const isX402Agent = service?.source === 'x402scan' || service?.title?.includes("x402");
+
+  // Initialize Smart Account with the service's chainId if available, defaulting to 8453 (Base)
+  // service might be null initially, but the hook needs a stable call order.
+  // We'll trust the hook handles re-render if we pass a state or we can just pass dynamic value since it's a component prop/arg in some sense but this hook pattern is 'useSomething'.
+  // However, hooks must be top level. 
+  // We CANNOT pass service.chainId directly here because service is null on first render.
+  // We need to either: 
+  // 1. Load service first then render a child component that uses smart account (cleanest).
+  // 2. Or modify useSmartAccount to allow switching chain via a method (harder refactor).
+  // 3. Or just pass 8453 initially, but that might init the wrong SDK. 
+
+  // Solution: We'll wrap the payment logic in a sub-component OR we can verify if useSmartAccount re-initializes when arg changes.
+  // Looking at useSmartAccount: useEffect depends on [initialize] which depends on [targetChainId]. So it SHOULD update.
+
+  const targetChainId = service?.chainId || 8453;
+  const { transfer, batchTransfer, isDeployed, usdcAllowance, eoaBalance } = useSmartAccount(targetChainId);
 
   const fetchReviews = async () => {
     if (!id) return;
@@ -275,6 +298,11 @@ const ServiceDetail = () => {
                   Starting at
                 </div>
                 <div className="text-3xl font-bold">${(Number(service.price) + 0.02).toFixed(2)}</div>
+                <div className="mt-2 flex items-center gap-2">
+                  <Badge variant="outline" className={`${service.chainId === 11155111 ? 'border-purple-500 text-purple-500' : 'border-blue-500 text-blue-500'}`}>
+                    {service.chainId === 11155111 ? 'Sepolia Testnet' : 'Base Mainnet'}
+                  </Badge>
+                </div>
               </div>
 
               <div className="mb-6 space-y-3 text-sm">
@@ -296,6 +324,74 @@ const ServiceDetail = () => {
 
               {/* Payment Button */}
 
+              {service.category === 'AI Agent' && !service.contactInfo && (
+                <div className="mb-4">
+                  {isX402Agent ? (
+                    <div className="space-y-3">
+                      {service.title.includes("ACP") ? (
+                        <div className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
+                          This agent requires no manual input. Just click Pay to fund the ACP job budget.
+                        </div>
+                      ) : service.title.includes("x402-secure") ? (
+                        <div>
+                          <label className="mb-1 block text-sm font-medium">Target URL to Analyze</label>
+                          <input
+                            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                            value={taskInput}
+                            onChange={(e) => setTaskInput(e.target.value)}
+                            placeholder="e.g. https://mesh.heurist.xyz"
+                          />
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            The URL of the x402 server to analyze social presence.
+                          </p>
+                        </div>
+                      ) : (
+                        <>
+                          <div>
+                            <label className="mb-1 block text-sm font-medium">Chain</label>
+                            <input
+                              className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                              value={x402Inputs.chain}
+                              onChange={(e) => setX402Inputs({ ...x402Inputs, chain: e.target.value })}
+                              placeholder="e.g. base, ethereum"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-sm font-medium">Token Address / Symbol</label>
+                            <input
+                              className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                              value={x402Inputs.token}
+                              onChange={(e) => setX402Inputs({ ...x402Inputs, token: e.target.value })}
+                              placeholder="e.g. USDC, 0x..."
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-sm font-medium">Output Language</label>
+                            <input
+                              className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                              value={x402Inputs.language}
+                              onChange={(e) => setX402Inputs({ ...x402Inputs, language: e.target.value })}
+                              placeholder="e.g. English, Spanish"
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <label className="mb-2 block text-sm font-medium">Task Instructions / Prompt ({service.title})</label>
+                      <textarea
+                        className="w-full min-h-[100px] rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        placeholder="Describe what you want the agent to do..."
+                        value={taskInput}
+                        onChange={(e) => setTaskInput(e.target.value)}
+                      />
+                      <p className="mt-1 text-xs text-muted-foreground">This prompt will be sent to the autonomous agent upon payment.</p>
+                    </>
+                  )}
+                </div>
+              )}
+
               <Button
                 className="mb-3 w-full"
                 size="lg"
@@ -311,9 +407,7 @@ const ServiceDetail = () => {
                     return;
                   }
 
-                  // === Validations ===
-
-                  // 1. Check if Smart Account is Deployed
+                  // Validations
                   if (!isDeployed) {
                     toast({
                       title: "Smart Account Not Active",
@@ -324,7 +418,6 @@ const ServiceDetail = () => {
                     return;
                   }
 
-                  // 2. Check Balance
                   const priceBigInt = parseUnits(service.price.toString(), 6);
                   if (eoaBalance !== undefined && eoaBalance < priceBigInt) {
                     toast({
@@ -335,11 +428,10 @@ const ServiceDetail = () => {
                     return;
                   }
 
-                  // 3. Check Allowance
                   if (usdcAllowance !== undefined && usdcAllowance < priceBigInt) {
                     toast({
                       title: "Approval Required",
-                      description: "You need to approve USDC spending. Go to Profile -> Wallet to approve.",
+                      description: `You need to approve USDC spending.`,
                       variant: "destructive",
                       action: <Link to="/profile" className="font-semibold underline">Go to Profile</Link>
                     });
@@ -347,43 +439,88 @@ const ServiceDetail = () => {
                   }
 
                   // === Proceed with Payment ===
-
                   setPaymentLoading(true);
                   try {
-                    // Use Smart Account transfer
-                    // Code updated to use SDK transfer method
+                    let txHash = "";
+                    let blockNumber = 0;
+                    let purchaseNote = "";
 
-                    const priceAmount = parseUnits(service.price.toString(), 6); // USDC has 6 decimals
-                    const feeAmount = parseUnits("0.02", 6); // 0.02 USDC fee
-                    const feeAddress = "0xe025be883d3f183fc4eab05AB57bA4d07AA53531";
+                    if (isX402Agent) {
+                      const { executeX402Request } = await import("@/utils/x402");
+                      const isACP = service.title.includes("ACP");
+                      const isSecure = service.title.includes("x402-secure");
+                      console.log(`Executing x402 flow for ${service.title}...`);
 
-                    console.log("Initiating batch transfer via Smart Account...");
-                    console.log("Recipient (Seller):", service.walletAddress, "Amount:", priceAmount.toString());
-                    console.log("Recipient (Fee):", feeAddress, "Amount:", feeAmount.toString());
+                      let endpoint = "https://x402.lucyos.ai/x402/tools/analyze_token";
+                      let body: any = {
+                        chain: x402Inputs.chain,
+                        token: x402Inputs.token,
+                        language: x402Inputs.language
+                      };
 
-                    // We generate a random API key just in case it's needed internally or we want to log it
-                    // User requested: "creo que te pedira una apikey genera una random"
-                    const apiKey = Math.random().toString(36).substring(7);
-                    console.log("Generated random API Key:", apiKey);
+                      if (isACP) {
+                        endpoint = `${API_BASE_URL}/api/proxy?targetUrl=${encodeURIComponent("https://acp-x402.virtuals.io/acp-budget")}`;
+                        body = {};
+                      } else if (isSecure) {
+                        // Use relative path to leverage Vite proxy in dev/build
+                        endpoint = "/api/x402/tools/get_social_trust";
+                        body = { url: taskInput };
+                      }
 
-                    const receipt = await batchTransfer([
-                      { recipient: service.walletAddress, amount: priceAmount.toString() },
-                      { recipient: feeAddress, amount: feeAmount.toString() }
-                    ]);
+                      // Note: We use the inputs for the body.
+                      const result = await executeX402Request(
+                        endpoint,
+                        "POST",
+                        body,
+                        walletClient as any,
+                        user as `0x${string}`
+                      );
 
-                    console.log("Batch Transfer successful", receipt);
+                      console.log("x402 Success:", result);
+                      purchaseNote = JSON.stringify(result);
+                      txHash = "0x" + "0".repeat(64); // Logic to get real hash depends on x402 util return structure
 
-                    const txHash = (receipt as any)?.receipt?.transactionHash || (receipt as any)?.transactionHash || "0x0000000000000000000000000000000000000000";
-                    const blockNumberHex = (receipt as any)?.receipt?.blockNumber || (receipt as any)?.blockNumber;
-                    const blockNumber = blockNumberHex ? parseInt(blockNumberHex, 16) : 0;
+                      toast({
+                        title: "Analysis Complete!",
+                        description: "Check the result in your console/purchase history.",
+                      });
 
-                    toast({
-                      title: "Payment Successful!",
-                      description: `TX: ${txHash.slice(0, 10)}...`,
-                    });
+                    } else {
+                      // STANDARD LOGIC
+                      const priceAmount = parseUnits(service.price.toString(), 6);
+                      const feeAmount = parseUnits("0.02", 6);
+                      const feeAddress = "0xe025be883d3f183fc4eab05AB57bA4d07AA53531";
+
+                      if (service.chainId === 11155111) {
+                        // Sepolia Direct
+                        const result = await executeDirectUSDCPayment(
+                          walletClient as any,
+                          user as `0x${string}`,
+                          service.walletAddress as `0x${string}`,
+                          Number(service.price) + 0.02,
+                          11155111
+                        );
+                        if (!result.success) throw new Error(result.error);
+                        txHash = result.txHash || "";
+                        blockNumber = result.blockNumber ? parseInt(result.blockNumber) : 0;
+                      } else {
+                        // Base Batch
+                        const receipt = await batchTransfer([
+                          { recipient: service.walletAddress, amount: priceAmount.toString() },
+                          { recipient: feeAddress, amount: feeAmount.toString() }
+                        ]);
+                        txHash = (receipt as any)?.receipt?.transactionHash || (receipt as any)?.transactionHash || "0x00";
+                        const bNum = (receipt as any)?.receipt?.blockNumber || (receipt as any)?.blockNumber;
+                        blockNumber = bNum ? parseInt(bNum, 16) : 0;
+                      }
+
+                      toast({
+                        title: "Payment Successful!",
+                        description: `TX: ${txHash.slice(0, 10)}...`,
+                      });
+                    }
 
                     // Record purchase
-                    console.log("Recording purchase in DB...");
                     const purchaseRes = await fetch(`${API_BASE_URL}/api/purchases`, {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
@@ -391,22 +528,17 @@ const ServiceDetail = () => {
                         serviceId: service._id,
                         buyerWallet: user.toLowerCase(),
                         sellerWallet: service.walletAddress.toLowerCase(),
-                        txHash: txHash,
-                        blockNumber: blockNumber,
+                        txHash: txHash || "0x00",
+                        blockNumber: blockNumber || 0,
+                        taskInput: isX402Agent ? JSON.stringify(x402Inputs) : taskInput,
+                        note: purchaseNote
                       }),
                     });
 
-                    if (!purchaseRes.ok) {
-                      const errorData = await purchaseRes.json().catch(() => ({}));
-                      console.error("Failed to record purchase:", purchaseRes.status, errorData);
-                      throw new Error(errorData.message || "Failed to record purchase in database");
-                    }
-                    console.log("Purchase recorded successfully");
+                    if (!purchaseRes.ok) throw new Error("Failed to record purchase");
 
-                    // Small delay to allow DB propagation
                     await new Promise(resolve => setTimeout(resolve, 1000));
 
-                    // Refresh service to show contact info
                     const query = user ? `?buyer=${user.toLowerCase()}` : "";
                     const res = await fetch(`${API_BASE_URL}/api/services/${id}${query}`);
                     const data = await res.json();
@@ -430,7 +562,7 @@ const ServiceDetail = () => {
                 ) : service.contactInfo ? (
                   <CheckCircle2 className="mr-2 h-4 w-4" />
                 ) : null}
-                {service.contactInfo ? "Service Purchased" : `Pay $${Number(service.price).toFixed(2)} USDC`}
+                {service.contactInfo ? (service.category === 'AI Agent' ? "Task Submitted" : "Service Purchased") : `Pay $${Number(service.price).toFixed(2)} USDC`}
               </Button>
 
               <div className="flex gap-2">

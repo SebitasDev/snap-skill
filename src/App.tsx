@@ -14,6 +14,8 @@ import CreateService from "./pages/CreateService.tsx";
 import TopSellers from "./pages/TopSellers";
 import Relationship from "./pages/Relationship";
 import SnapLinkPay from "./pages/SnapLinkPay";
+import AIHub from "./pages/AIHub";
+import CreateAgent from "./pages/CreateAgent";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +29,8 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/browse" element={<Browse />} />
+            <Route path="/ai" element={<AIHub />} />
+            <Route path="/ai/create" element={<CreateAgent />} />
             <Route path="/service/:id" element={<ServiceDetail />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/createservice" element={<CreateService />} />

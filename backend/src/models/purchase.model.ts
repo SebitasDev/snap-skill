@@ -7,6 +7,7 @@ export interface IPurchase extends Document {
     txHash: string;
     blockNumber: string;
     chainId: number;
+    taskInput?: string;
     createdAt: Date;
 }
 
@@ -41,6 +42,10 @@ const PurchaseSchema: Schema = new Schema(
             required: true,
             default: 8453, // Base mainnet
         },
+        taskInput: {
+            type: String,
+            required: false // Optional, mainly for AI agents
+        }
     },
     {
         timestamps: true,

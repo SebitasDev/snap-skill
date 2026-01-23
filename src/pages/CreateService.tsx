@@ -102,7 +102,7 @@ const CreateService = () => {
       return (
         formData.title.length >= 5 &&
         formData.category !== "" &&
-        Number(formData.price) > 1
+        Number(formData.price) > 0
       );
     }
     if (step === 2) {
@@ -258,7 +258,7 @@ const CreateService = () => {
                     if (step === 1) {
                       if (formData.title.length < 5) errors.push("Title (min 5 chars)");
                       if (!formData.category) errors.push("Category");
-                      if (Number(formData.price) <= 1) errors.push("Price (> $1)");
+                      if (Number(formData.price) <= 0) errors.push("Price (must be positive)");
                     } else if (step === 2) {
                       const wordCount = formData.description.split(/\s+/).filter(Boolean).length;
                       if (wordCount < 3) errors.push("Description (min 3 words)");

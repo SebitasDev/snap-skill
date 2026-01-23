@@ -9,7 +9,7 @@ export const createPurchase = async (req: Request, res: Response) => {
     try {
         console.log("=== CREATE PURCHASE REQUEST ===");
         console.log("Body:", req.body);
-        const { serviceId, buyerWallet, sellerWallet, txHash, blockNumber } = req.body;
+        const { serviceId, buyerWallet, sellerWallet, txHash, blockNumber, taskInput } = req.body;
 
         if (!serviceId || !buyerWallet || !sellerWallet || !txHash || blockNumber === undefined) {
             console.log("Missing required fields");
@@ -37,6 +37,7 @@ export const createPurchase = async (req: Request, res: Response) => {
             txHash: txHash.toLowerCase(),
             blockNumber: blockNumber.toString(),
             chainId: CHAIN_ID,
+            taskInput: taskInput || undefined
         });
 
         console.log("Purchase created successfully:", purchase);

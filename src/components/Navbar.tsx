@@ -147,6 +147,11 @@ const Navbar = () => {
               <Link to="/browse">Browse</Link>
             </Button>
             <Button variant="ghost" asChild>
+              <Link to="/ai" className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/50">
+                AI Agents
+              </Link>
+            </Button>
+            <Button variant="ghost" asChild>
               <Link to="/top-sellers">Top Sellers</Link>
             </Button>
             <Button variant="ghost" asChild>
@@ -195,6 +200,7 @@ const Navbar = () => {
                   </div>
 
                   <Link to="/browse" className="text-lg font-medium hover:text-primary transition-colors">Browse</Link>
+                  <Link to="/ai" className="text-lg font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 transition-colors">AI Agents</Link>
                   <Link to="/top-sellers" className="text-lg font-medium hover:text-primary transition-colors">Top Sellers</Link>
                   <Link to="/profile" className="text-lg font-medium hover:text-primary transition-colors">Profile</Link>
                   {isConnected && (

@@ -59,6 +59,8 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/purchases", purchaseRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/transfers", transferRoutes);
+import proxyRoutes from "./routes/proxy.routes";
+app.use("/api/proxy", proxyRoutes);
 
 app.use("/protected/service/:id", async (req, res, next) => {
   console.log(res.getHeaders());

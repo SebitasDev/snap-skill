@@ -59,7 +59,7 @@ export const createService = async (
     }
 
     const parsedPrice = Number(price);
-    if (isNaN(parsedPrice) || parsedPrice <= 1) {
+    if (isNaN(parsedPrice) || parsedPrice <= 0) {
       return res.status(400).json({
         message: "Invalid price: must be a positive number",
       });

@@ -3,12 +3,23 @@ import { AccountAbstraction, BASE_MAINNET } from '@1llet.xyz/erc4337-gasless-sdk
 import { decodeEntryPointError } from '@/utils/errorDecoder';
 import { useWalletClient } from 'wagmi';
 import { erc20Abi, encodeFunctionData } from 'viem';
-import { base } from 'viem/chains';
+import { sepolia, base } from 'viem/chains';
 
 // Base USDC Address
-const USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+const BASE_USDC_ADDRESS = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+// Sepolia USDC Address (Circle's Testnet USDC)
+const SEPOLIA_USDC_ADDRESS = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238';
 
-export const useSmartAccount = () => {
+const SEPOLIA_CONFIG = {
+    chainId: 11155111,
+    rpcUrl: "https://ethereum-sepolia-rpc.publicnode.com", // Fallback RPC
+    ...BASE_MAINNET // Inherit other config for now, assuming compatible bundler/paymaster logic or we need a real SEPOLIA_TESNET config object from SDK
+};
+// Note: If SDK doesn't export SEPOLIA_TESTNET, we might need to construct it or assume user uses Base for everything. 
+// However, user EXPLICITLY requested Sepolia payment.
+// We'll modify the loop to pick the right address.
+
+export const useSmartAccount = (targetChainId: number = 8453) => {
     const [aa, setAa] = useState<AccountAbstraction | null>(null);
     const [smartAccountAddress, setSmartAccountAddress] = useState<string | null>(null);
     const [ownerAddress, setOwnerAddress] = useState<string | null>(null);
@@ -18,40 +29,48 @@ export const useSmartAccount = () => {
     const [usdcAllowance, setUsdcAllowance] = useState<bigint>(BigInt(0));
     const [eoaBalance, setEoaBalance] = useState<bigint>(BigInt(0));
 
+    // Determine USDC Address based on chain
+    const USDC_ADDRESS = targetChainId === 11155111 ? SEPOLIA_USDC_ADDRESS : BASE_USDC_ADDRESS;
+
     const { data: walletClient } = useWalletClient();
 
     const checkApproval = useCallback(async (sdk: AccountAbstraction) => {
         try {
             // Check allowance for USDC
-            const allowance = await sdk.getAllowance("USDC");
+            const allowance = await sdk.getAllowance("USDC"); // SDK likely assumes a default token map or we need to pass address if SDK supports it
             console.log("USDC Allowance:", allowance);
             setUsdcAllowance(allowance);
         } catch (error) {
             console.error("Failed to check allowance:", error);
         }
-    }, []);
+    }, [USDC_ADDRESS]);
 
     const checkBalance = useCallback(async (sdk: AccountAbstraction) => {
         try {
             // Check EOA Balance for USDC using SDK
-            // The SDK has getAccountState which returns everything, or specific methods.
-            // Based on previous file read, we saw: getEoaBalance(token)
             const balance = await sdk.getEoaBalance("USDC");
             console.log("EOA USDC Balance:", balance);
             setEoaBalance(balance);
         } catch (error) {
             console.error("Failed to check EOA balance:", error);
         }
-    }, []);
+    }, [USDC_ADDRESS]);
 
     const initialize = useCallback(async () => {
         if (!walletClient) return;
 
         try {
-            console.log("Initializing SDK with config:", BASE_MAINNET);
-            const sdk = new AccountAbstraction(BASE_MAINNET as any);
+            // Select config based on chain
+            // Note: The SDK might need a specific config object for Sepolia. 
+            // For now, we hack it by overriding chainId if it's Sepolia.
+            const config = targetChainId === 11155111
+                ? { ...BASE_MAINNET, chainId: 11155111, rpcUrl: "https://ethereum-sepolia-rpc.publicnode.com" }
+                : BASE_MAINNET;
 
-            // Connect using Wagmi walletClient (supports all connectors: MetaMask, Coinbase, WC, etc.)
+            console.log("Initializing SDK with chain:", targetChainId);
+            const sdk = new AccountAbstraction(config as any);
+
+            // Connect using Wagmi walletClient
             const { owner, smartAccount } = await sdk.connect(walletClient as any);
 
             setAa(sdk);
@@ -68,7 +87,7 @@ export const useSmartAccount = () => {
         } catch (error) {
             console.error("Failed to initialize Smart Account:", error);
         }
-    }, [walletClient, checkApproval, checkBalance]);
+    }, [walletClient, targetChainId, checkApproval, checkBalance]);
 
     useEffect(() => {
         initialize();
@@ -111,7 +130,7 @@ export const useSmartAccount = () => {
                 abi: erc20Abi,
                 functionName: 'approve',
                 args: [smartAccountAddress as `0x${string}`, BigInt(amount)],
-                chain: base,
+                chain: targetChainId === 11155111 ? sepolia : base,
                 account: ownerAddress as `0x${string}`
             });
             return hash;

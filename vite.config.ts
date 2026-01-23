@@ -18,6 +18,11 @@ export default defineConfig(({ mode }) => ({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/openmid/, ""),
       },
+      "/api/x402": {
+        target: "https://x402-secure-api.t54.ai",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ""),
+      },
     },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(

@@ -131,7 +131,10 @@ export async function executeX402Request(
             throw new Error(`Payment verification failed (${paidRes.status}): ${errText}`);
         }
 
-        return await paidRes.json();
+        return {
+            data: await paidRes.json(),
+            paymentResult
+        };
 
     } catch (error) {
         console.error("x402 Execution Error:", error);

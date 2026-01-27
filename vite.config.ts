@@ -23,6 +23,11 @@ export default defineConfig(({ mode }) => ({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ""),
       },
+      "/api/padel": {
+        target: "https://padelmaps.org",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/padel/, ""),
+      },
     },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(

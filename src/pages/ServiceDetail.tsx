@@ -38,11 +38,16 @@ const ServiceDetail = () => {
 
   const [x402Inputs, setX402Inputs] = useState({
     chain: "base",
-    token: "USDC",
-    language: "English"
+    token: "usdc",
   });
 
-  const isX402Agent = service?.source === 'x402scan' || service?.title?.includes("x402");
+  const [padelInputs, setPadelInputs] = useState({
+    city: "",
+    country: "",
+    limit: 50
+  });
+
+  const isX402Agent = service?.category === 'AI Agent' || service?.title?.includes("x402");
 
   // Initialize Smart Account with the service's chainId if available, defaulting to 8453 (Base)
   // service might be null initially, but the hook needs a stable call order.
@@ -351,6 +356,38 @@ const ServiceDetail = () => {
                           The URL of the x402 server to analyze social presence.
                         </p>
                       </div>
+                    ) : service.title.includes("Padel Maps") ? (
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">City</label>
+                          <input
+                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                            placeholder="e.g. Barcelona"
+                            value={padelInputs.city}
+                            onChange={(e) => setPadelInputs({ ...padelInputs, city: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Country (Optional)</label>
+                          <input
+                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                            placeholder="e.g. Spain"
+                            value={padelInputs.country}
+                            onChange={(e) => setPadelInputs({ ...padelInputs, country: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Limit (Max 100)</label>
+                          <input
+                            type="number"
+                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                            placeholder="50"
+                            max={100}
+                            value={padelInputs.limit}
+                            onChange={(e) => setPadelInputs({ ...padelInputs, limit: Number(e.target.value) })}
+                          />
+                        </div>
+                      </div>
                     ) : (
                       <>
                         <div>
@@ -369,15 +406,6 @@ const ServiceDetail = () => {
                             value={x402Inputs.token}
                             onChange={(e) => setX402Inputs({ ...x402Inputs, token: e.target.value })}
                             placeholder="e.g. USDC, 0x..."
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-sm font-medium">Output Language</label>
-                          <input
-                            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                            value={x402Inputs.language}
-                            onChange={(e) => setX402Inputs({ ...x402Inputs, language: e.target.value })}
-                            placeholder="e.g. English, Spanish"
                           />
                         </div>
                       </>
@@ -444,6 +472,15 @@ const ServiceDetail = () => {
                   return;
                 }
 
+                if (service.title.includes("Padel Maps") && !padelInputs.city.trim()) {
+                  toast({
+                    title: "City Required",
+                    description: "Please enter a city to search for padel clubs.",
+                    variant: "destructive"
+                  });
+                  return;
+                }
+
                 // === Proceed with Payment ===
                 setPaymentLoading(true);
                 try {
@@ -460,8 +497,7 @@ const ServiceDetail = () => {
                     let endpoint = "https://x402.lucyos.ai/x402/tools/analyze_token";
                     let body: any = {
                       chain: x402Inputs.chain,
-                      token: x402Inputs.token,
-                      language: x402Inputs.language
+                      token: x402Inputs.token
                     };
 
                     if (isACP) {
@@ -471,6 +507,14 @@ const ServiceDetail = () => {
                       // Use relative path to leverage Vite proxy in dev/build
                       endpoint = "/api/x402/tools/get_social_trust";
                       body = { url: taskInput };
+                    } else if (service.title.includes("Padel Maps")) {
+                      // Padel Maps Proxy
+                      endpoint = "/api/padel/api/x402/clubs";
+                      body = {
+                        city: padelInputs.city,
+                        limit: Number(padelInputs.limit) || 50,
+                        ...(padelInputs.country ? { country: padelInputs.country } : {})
+                      };
                     }
 
                     // Note: We use the inputs for the body.

@@ -69,14 +69,29 @@ const MOCK_REGISTRY_AGENTS = [
         description: "x402-secure is the trust layer for x402 ecosystem. Powered by t54.ai.",
         price: 0.01,
         category: "AI Agent",
-        walletAddress: "0x0000000000000000000000000000000000000000",
+        walletAddress: "0x0495d60c927B97d67D5018C6AA65C9b2bebaeED9",
         deliveryTime: "Instant",
         revisions: "N/A",
         includes: ["Social Trust Analysis", "Reputation Scoring"],
-        imageUrl: "https://acp-x402.virtuals.io/logo.png", // Using same placeholder or user provided image if available
+        imageUrl: "https://framerusercontent.com/images/k2Cjd0XCXe10T4XNdbqKSMx7g.png",
         imagePublicId: "mock_x402_secure",
         source: "x402scan",
         externalProfileUrl: "https://x402-secure-api.t54.ai",
+        chainId: 8453
+    },
+    {
+        title: "Padel Maps Agent",
+        description: "Discover and rate padel clubs around the world. Find the perfect padel court for your next game.",
+        price: 0.01,
+        category: "AI Agent",
+        walletAddress: "0x0495d60c927B97d67D5018C6AA65C9b2bebaeED9",
+        deliveryTime: "Instant",
+        revisions: "N/A",
+        includes: ["Club Search", "Padel Courts"],
+        imageUrl: "https://padelmaps.org/favicon.ico",
+        imagePublicId: "mock_padel",
+        source: "x402scan",
+        externalProfileUrl: "https://padelmaps.org",
         chainId: 8453
     }
 ];
